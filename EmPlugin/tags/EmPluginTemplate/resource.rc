@@ -1,0 +1,97 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDB_24_24_24            BITMAP                  "images\\plugin24x24x24.bmp"
+IDB_24_24_24_BW         BITMAP                  "images\\plugin24x24x24bw.bmp"
+IDB_24_24_24_HOT        BITMAP                  "images\\plugin24x24x24hot.bmp"
+IDB_24_24_8             BITMAP                  "images\\plugin24x24x8.bmp"
+IDB_24_24_8_BW          BITMAP                  "images\\plugin24x24x8bw.bmp"
+IDB_24_24_8_HOT         BITMAP                  "images\\plugin24x24x8hot.bmp"
+IDB_24_24_4             BITMAP                  "images\\plugin24x24x4.bmp"
+IDB_16_16_24            BITMAP                  "images\\plugin16x16x24.bmp"
+IDB_16_16_24_BW         BITMAP                  "images\\plugin16x16x24bw.bmp"
+IDB_16_16_24_HOT        BITMAP                  "images\\plugin16x16x24hot.bmp"
+IDB_16_16_8             BITMAP                  "images\\plugin16x16x8.bmp"
+IDB_16_16_8_BW          BITMAP                  "images\\plugin16x16x8bw.bmp"
+IDB_16_16_8_HOT         BITMAP                  "images\\plugin16x16x8hot.bmp"
+IDB_16_16_4             BITMAP                  "images\\plugin16x16x4.bmp"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_MENU_TEXT           "Main Menu Text"
+    IDS_STATUS_MESSAGE      "Tooltip Text"
+    IDS_VERSION             "1.00"
+    IDS_SURE_TO_UNINSTALL   "Are you sure you want to uninstall this plug-in?"
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
