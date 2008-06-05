@@ -74,8 +74,8 @@ IDB_16_16_4             BITMAP                  "images\\plugin16x16x4.bmp"
 
 STRINGTABLE
 BEGIN
-    IDS_MENU_TEXT           "Main Menu Text"
-    IDS_STATUS_MESSAGE      "Tooltip Text"
+    IDS_MENU_TEXT           "Plug-in Menu Text"
+    IDS_STATUS_MESSAGE      "Toolbar Name and Tooltip Text"
     IDS_VERSION             "1.00"
     IDS_SURE_TO_UNINSTALL   "Are you sure you want to uninstall this plug-in?"
 END
