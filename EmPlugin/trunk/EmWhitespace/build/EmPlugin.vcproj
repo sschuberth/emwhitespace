@@ -196,6 +196,14 @@
 			</File>
 		</Filter>
 		<File
+			RelativePath="..\config.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\config.h"
+			>
+		</File>
+		<File
 			RelativePath="..\main.cpp"
 			>
 		</File>
