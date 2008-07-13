@@ -1,6 +1,7 @@
 #include "config.h"
 
 LPCTSTR EmConfig::ROOT_KEY=_T("Software\\EmSoft\\EmEditor v3\\Config");
+LPCTSTR EmConfig::CUST_VALUE=_T("Cust");
 
 EmConfig::EmConfig(HWND view)
 :   m_view(view)
@@ -29,9 +30,9 @@ bool EmConfig::GetConfig(CCustomizeInfo& info,LPCTSTR name)
     HKEY config_key;
     if (RegOpenKeyEx(m_root_key,name,0,KEY_READ,&config_key)==ERROR_SUCCESS) {
         DWORD type,count;
-        if (RegQueryValueEx(config_key,_T("Cust"),NULL,&type,NULL,&count)==ERROR_SUCCESS) {
+        if (RegQueryValueEx(config_key,CUST_VALUE,NULL,&type,NULL,&count)==ERROR_SUCCESS) {
             if (type==REG_BINARY && count==sizeof(CCustomizeInfo)) {
-                result=(RegQueryValueEx(config_key,_T("Cust"),NULL,NULL,(LPBYTE)&info,&count)==ERROR_SUCCESS);
+                result=(RegQueryValueEx(config_key,CUST_VALUE,NULL,NULL,(LPBYTE)&info,&count)==ERROR_SUCCESS);
             }
         }
     }
@@ -54,7 +55,7 @@ bool EmConfig::SetConfig(CCustomizeInfo const& info,LPCTSTR name)
 
     HKEY config_key;
     if (RegOpenKeyEx(m_root_key,name,0,KEY_WRITE,&config_key)==ERROR_SUCCESS) {
-        result=(RegSetValueEx(config_key,_T("Cust"),0,REG_BINARY,(LPBYTE)&info,sizeof(CCustomizeInfo))==ERROR_SUCCESS);
+        result=(RegSetValueEx(config_key,CUST_VALUE,0,REG_BINARY,(LPBYTE)&info,sizeof(CCustomizeInfo))==ERROR_SUCCESS);
     }
 
     RegCloseKey(config_key);

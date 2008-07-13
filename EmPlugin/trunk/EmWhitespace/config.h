@@ -19,6 +19,7 @@ class EmConfig
   private:
 
     static LPCTSTR ROOT_KEY;
+    static LPCTSTR CUST_VALUE;
 
     HWND m_view;
     HKEY m_root_key;
