@@ -4,12 +4,12 @@
 #include <windows.h>
 #include <tchar.h>
 
-#define ETL_FRAME_CLASS_NAME CMyFrame
+#define ETL_FRAME_CLASS_NAME EmPlugin
 #include "plugin/etlframe.h"
 
 #include "resource.h"
 
-class CMyFrame:public CETLFrame<CMyFrame>
+class EmPlugin:public CETLFrame<EmPlugin>
 {
   public:
 
@@ -63,61 +63,50 @@ class CMyFrame:public CETLFrame<CMyFrame>
     ,   _MASK_256_COLOR  = RGB(0,255,0)
     };
 
+    enum MenuItem {
+        MI_SHOW_TABS   = 1
+    ,   MI_SHOW_SPACES = 2
+    };
+
+    EmPlugin();
+    ~EmPlugin();
+
     /*
      * Functions to Export
      */
 
     // The plug-in has been selected from a menu or a toolbar.
-    void OnCommand(HWND hwndView) {
-    }
+    void OnCommand(HWND hwndView);
 
     // Queries the status of the plug-in, whether the command is enabled and
     // whether the plug-in is a checked status.
-    BOOL QueryStatus(HWND hwndView,LPBOOL pbChecked) {
-        return FALSE;
-    }
+    BOOL QueryStatus(HWND hwndView,LPBOOL pbChecked);
 
     // When a status is changed, this function is called with the Events parameter.
-    void OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam) {
-    }
+    void OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam);
 
     /*
      * Messages to Plug-ins
      */
 
     // Queries whether the plug-in can be uninstalled.
-    BOOL QueryUninstall(HWND hDlg) {
-        return TRUE;
-    }
+    BOOL QueryUninstall(HWND hDlg);
 
     // Uninstalls the plug-in.
-    BOOL SetUninstall(HWND hDlg,LPTSTR pszUninstallCommand,LPTSTR pszUninstallParam) {
-        TCHAR szAsk[80];
-        TCHAR szAppName[80];
-
-        LoadString(EEGetInstanceHandle(),IDS_SURE_TO_UNINSTALL,szAsk,sizeof(szAsk)/sizeof(TCHAR));
-        LoadString(EEGetInstanceHandle(),IDS_MENU_TEXT,szAppName,sizeof(szAppName)/sizeof(TCHAR));
-
-        if (MessageBox(hDlg,szAsk,szAppName,MB_YESNO|MB_ICONEXCLAMATION)==IDYES) {
-            return UNINSTALL_SIMPLE_DELETE;
-        }
-        return UNINSTALL_FALSE;
-    }
+    BOOL SetUninstall(HWND hDlg,LPTSTR pszUninstallCommand,LPTSTR pszUninstallParam);
 
     // Queries whether the property is enabled.
-    BOOL QueryProperties(HWND hDlg) {
-        return FALSE;
-    }
+    BOOL QueryProperties(HWND hDlg);
 
     // Requests the plug-in to display the properties.
-    BOOL SetProperties(HWND hDlg) {
-        return FALSE;
-    }
+    BOOL SetProperties(HWND hDlg);
 
     // Called before each Windows message is translated.
-    BOOL PreTranslateMessage(HWND hwndView,MSG* pMsg) {
-        return FALSE;
-    }
+    BOOL PreTranslateMessage(HWND hwndView,MSG* pMsg);
+
+  private:
+
+    HMENU m_menu;
 };
 
 #endif // MAIN_H
