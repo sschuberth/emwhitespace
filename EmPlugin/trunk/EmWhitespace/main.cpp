@@ -17,6 +17,7 @@ EmPlugin::EmPlugin()
     AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_TABS,_T("Show Tabs"));
     AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_SPACES,_T("Show Spaces"));
 
+    // Separate toggle items from action items.
     AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
 
     AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert Spaces to Tabs"));
@@ -83,6 +84,8 @@ void EmPlugin::OnCommand(HWND hwndView)
             bool no_selection=(Editor_GetSelType(hwndView)==SEL_TYPE_NONE);
             POINT_PTR pos;
 
+            // (Un)tabify only works on a selection, so if we do not have one,
+            // select all and work on the whole document.
             if (no_selection) {
                 Editor_GetCaretPos(hwndView,POS_VIEW,&pos);
                 Editor_ExecCommand(hwndView,EEID_EDIT_SELECT_ALL);
@@ -92,6 +95,9 @@ void EmPlugin::OnCommand(HWND hwndView)
 
             if (no_selection) {
                 Editor_SetSelType(hwndView,SEL_TYPE_NONE);
+
+                // Restore the caret position; it actually is correct, but the
+                // caret is invisible if we do not set it here.
                 Editor_SetCaretPos(hwndView,POS_VIEW,&pos);
             }
 
