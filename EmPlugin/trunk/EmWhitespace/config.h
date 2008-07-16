@@ -10,7 +10,7 @@ class EmConfig
 {
   public:
 
-    EmConfig(HWND view);
+    EmConfig(HWND view_handle);
     ~EmConfig();
 
     bool GetConfig(CCustomizeInfo& info,LPCTSTR name=NULL);
@@ -21,7 +21,7 @@ class EmConfig
     static LPCTSTR ROOT_KEY;
     static LPCTSTR CUST_VALUE;
 
-    HWND m_view;
+    HWND m_view_handle;
     HKEY m_root_key;
 };
 
