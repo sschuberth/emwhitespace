@@ -64,8 +64,14 @@ class EmPlugin:public CETLFrame<EmPlugin>
     };
 
     enum MenuItem {
-        MI_SHOW_TABS   = 1
-    ,   MI_SHOW_SPACES = 2
+        MI_SHOW_RETURNS     = 1
+    ,   MI_SHOW_EOF
+    ,   MI_SHOW_TABS
+    ,   MI_SHOW_SPACES
+
+    ,   MI_SPACES_TO_TABS
+    ,   MI_TABS_TO_SPACES
+    ,   MI_TRIM_WHITESPACES
     };
 
     EmPlugin();
@@ -106,7 +112,7 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
   private:
 
-    HMENU m_menu;
+    HMENU m_menu_handle;
 };
 
 #endif // MAIN_H
