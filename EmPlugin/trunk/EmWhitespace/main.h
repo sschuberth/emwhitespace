@@ -9,6 +9,9 @@
 
 #include "resource.h"
 
+#include <hash_map>
+#include <string>
+
 class EmPlugin:public CETLFrame<EmPlugin>
 {
   public:
@@ -51,8 +54,8 @@ class EmPlugin:public CETLFrame<EmPlugin>
     enum {
         _ALLOW_OPEN_SAME_GROUP    = TRUE  // Is it allowed to open a file in the same window group during plug-in execution?
     ,   _ALLOW_MULTIPLE_INSTANCES = TRUE  // Is it allowed to have multiple instances?
-    ,   _MAX_EE_VERSION           = 7100  // Newest supported EmEditor version * 1000.
-    ,   _MIN_EE_VERSION           = 6100  // Oldest supported EmEditor version * 1000.
+    ,   _MAX_EE_VERSION           = 7100  // Newest supported EmEditor version * 1000 (the plug-in was developed against EmEditor 7.01, leave some room for newer versions).
+    ,   _MIN_EE_VERSION           = 6000  // Oldest supported EmEditor version * 1000 (the used EVENT_IDLE is supported since EmEditor 6.00).
     ,   _SUPPORT_EE_PRO           = TRUE  // Is EmEditor Professional supported?
     ,   _SUPPORT_EE_STD           = TRUE  // Is EmEditor Standard supported?
     };
@@ -73,6 +76,8 @@ class EmPlugin:public CETLFrame<EmPlugin>
     ,   MI_TABS_TO_SPACES
     ,   MI_TRIM_WHITESPACES
     };
+
+    static void ShowLineEndStatus(HWND view,LPTSTR name);
 
     EmPlugin();
     ~EmPlugin();
@@ -113,6 +118,29 @@ class EmPlugin:public CETLFrame<EmPlugin>
   private:
 
     HMENU m_menu_handle;
+
+    struct LineEndStats {
+        UINT_PTR dos_count,unix_count,mac_count;
+
+        bool isEmpty() const {
+            return (dos_count==0 && unix_count==0 && mac_count==0);
+        }
+
+        bool isDOSStyle() const {
+            return (dos_count>0 && unix_count==0 && mac_count==0);
+        }
+
+        bool isUNIXStyle() const {
+            return (unix_count>0 && mac_count==0 && dos_count==0);
+        }
+
+        bool isMACStyle() const {
+            return (mac_count>0 && dos_count==0 && unix_count==0);
+        }
+    } m_eol_stats;
+
+    typedef std::basic_string<TCHAR> String;
+    stdext::hash_map<String,LineEndStats> m_eol_stats_table;
 };
 
 #endif // MAIN_H
