@@ -52,20 +52,20 @@ END
 // Bitmap
 //
 
-IDB_24_24_24            BITMAP                  "images\\plugin24x24x24.bmp"
-IDB_24_24_24_BW         BITMAP                  "images\\plugin24x24x24bw.bmp"
-IDB_24_24_24_HOT        BITMAP                  "images\\plugin24x24x24hot.bmp"
-IDB_24_24_8             BITMAP                  "images\\plugin24x24x8.bmp"
-IDB_24_24_8_BW          BITMAP                  "images\\plugin24x24x8bw.bmp"
-IDB_24_24_8_HOT         BITMAP                  "images\\plugin24x24x8hot.bmp"
-IDB_24_24_4             BITMAP                  "images\\plugin24x24x4.bmp"
-IDB_16_16_24            BITMAP                  "images\\plugin16x16x24.bmp"
-IDB_16_16_24_BW         BITMAP                  "images\\plugin16x16x24bw.bmp"
-IDB_16_16_24_HOT        BITMAP                  "images\\plugin16x16x24hot.bmp"
-IDB_16_16_8             BITMAP                  "images\\plugin16x16x8.bmp"
-IDB_16_16_8_BW          BITMAP                  "images\\plugin16x16x8bw.bmp"
-IDB_16_16_8_HOT         BITMAP                  "images\\plugin16x16x8hot.bmp"
-IDB_16_16_4             BITMAP                  "images\\plugin16x16x4.bmp"
+IDB_24_24_32            BITMAP                  "images\\pilcrow24x24x32.bmp"
+IDB_24_24_32_DISABLED   BITMAP                  "images\\pilcrow24x24x32disabled.bmp"
+IDB_24_24_32_HOVER      BITMAP                  "images\\pilcrow24x24x32hover.bmp"
+IDB_24_24_8             BITMAP                  "images\\pilcrow24x24x8.bmp"
+IDB_24_24_8_DISABLED    BITMAP                  "images\\pilcrow24x24x8disabled.bmp"
+IDB_24_24_8_HOVER       BITMAP                  "images\\pilcrow24x24x8hover.bmp"
+IDB_24_24_4             BITMAP                  "images\\pilcrow24x24x4.bmp"
+IDB_16_16_32            BITMAP                  "images\\pilcrow16x16x32.bmp"
+IDB_16_16_32_DISABLED   BITMAP                  "images\\pilcrow16x16x32disabled.bmp"
+IDB_16_16_32_HOVER      BITMAP                  "images\\pilcrow16x16x32hover.bmp"
+IDB_16_16_8             BITMAP                  "images\\pilcrow16x16x8.bmp"
+IDB_16_16_8_DISABLED    BITMAP                  "images\\pilcrow16x16x8disabled.bmp"
+IDB_16_16_8_HOVER       BITMAP                  "images\\pilcrow16x16x8hover.bmp"
+IDB_16_16_4             BITMAP                  "images\\pilcrow16x16x4.bmp"
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -24,30 +24,30 @@ class EmPlugin:public CETLFrame<EmPlugin>
     };
 
     enum {
-        // Large 24bit color (true color) bitmaps.
-        _IDB_TRUE_24_DEFAULT = IDB_24_24_24      // Default state bitmap.
-    ,   _IDB_TRUE_24_BW      = IDB_24_24_24_BW   // Disabled state bitmap.
-    ,   _IDB_TRUE_24_HOT     = IDB_24_24_24_HOT  // Hot state bitmap.
+        // Large 32-bit (true color) bitmaps.
+        _IDB_TRUE_24_DEFAULT = IDB_24_24_32           // Default state bitmap.
+    ,   _IDB_TRUE_24_BW      = IDB_24_24_32_DISABLED  // Disabled state bitmap.
+    ,   _IDB_TRUE_24_HOT     = IDB_24_24_32_HOVER     // Hot state bitmap.
 
-        // Large 256 color bitmaps.
+        // Large 8-bit (256 color) bitmaps.
     ,   _IDB_256C_24_DEFAULT = IDB_24_24_8
-    ,   _IDB_256C_24_BW      = IDB_24_24_8_BW
-    ,   _IDB_256C_24_HOT     = IDB_24_24_8_HOT
+    ,   _IDB_256C_24_BW      = IDB_24_24_8_DISABLED
+    ,   _IDB_256C_24_HOT     = IDB_24_24_8_HOVER
 
-        // Large 16 color bitmap (fallback).
+        // Large 4-bit (16 color) bitmap (fallback).
     ,   _IDB_16C_24          = IDB_24_24_4
 
-        // Small 24bit color (true color) bitmaps.
-    ,   _IDB_TRUE_16_DEFAULT = IDB_16_16_24
-    ,   _IDB_TRUE_16_BW      = IDB_16_16_24_BW
-    ,   _IDB_TRUE_16_HOT     = IDB_16_16_24_HOT
+        // Small 32-bit (true color) bitmaps.
+    ,   _IDB_TRUE_16_DEFAULT = IDB_16_16_32
+    ,   _IDB_TRUE_16_BW      = IDB_16_16_32_DISABLED
+    ,   _IDB_TRUE_16_HOT     = IDB_16_16_32_HOVER
 
-        // Small 256 color bitmaps.
+        // Small 8-bit (256 color) bitmaps.
     ,   _IDB_256C_16_DEFAULT = IDB_16_16_8
-    ,   _IDB_256C_16_BW      = IDB_16_16_8_BW
-    ,   _IDB_256C_16_HOT     = IDB_16_16_8_HOT
+    ,   _IDB_256C_16_BW      = IDB_16_16_8_DISABLED
+    ,   _IDB_256C_16_HOT     = IDB_16_16_8_HOVER
 
-        // Small 16 color bitmap (fallback).
+        // Small 4-bit (16 color) bitmap (fallback).
     ,   _IDB_BITMAP          = IDB_16_16_4
     };
 

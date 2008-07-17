@@ -6,19 +6,20 @@
 #define IDS_STATUS_MESSAGE              102
 #define IDS_VERSION                     103
 #define IDS_SURE_TO_UNINSTALL           104
-#define IDB_24_24_24                    201
-#define IDB_24_24_24_BW                 202
-#define IDB_24_24_24_HOT                203
+
+#define IDB_24_24_32                    201
+#define IDB_24_24_32_DISABLED           202
+#define IDB_24_24_32_HOVER              203
 #define IDB_24_24_8                     204
-#define IDB_24_24_8_BW                  205
-#define IDB_24_24_8_HOT                 206
+#define IDB_24_24_8_DISABLED            205
+#define IDB_24_24_8_HOVER               206
 #define IDB_24_24_4                     207
-#define IDB_16_16_24                    208
-#define IDB_16_16_24_BW                 209
-#define IDB_16_16_24_HOT                210
+#define IDB_16_16_32                    208
+#define IDB_16_16_32_DISABLED           209
+#define IDB_16_16_32_HOVER              210
 #define IDB_16_16_8                     211
-#define IDB_16_16_8_BW                  212
-#define IDB_16_16_8_HOT                 213
+#define IDB_16_16_8_DISABLED            212
+#define IDB_16_16_8_HOVER               213
 #define IDB_16_16_4                     214
 
 // Next default values for new objects
