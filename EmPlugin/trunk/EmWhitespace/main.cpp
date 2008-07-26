@@ -1,34 +1,163 @@
 #include "main.h"
 #include "config.h"
 
+#include <assert.h>
+#include <process.h>
+
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*x))
 
 // The following line is needed after EmPlugin definition.
 _ETL_IMPLEMENT
 
-void EmPlugin::ShowLineEndStatus(HWND view,LPTSTR name)
+unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
 {
-    static LPCTSTR title=_T("Detected Line End Style: ");
-    static TCHAR buffer[1024];
+    // Note that m_eol_stats may point to a different location if the thread was
+    // suspended and resumed, so do not use a copy but a reference here.
+    LineEndStats*& stats=static_cast<EmPlugin*>(_this)->m_eol_stats;
 
-    Editor_GetStatusW(view,buffer,ARRAY_LENGTH(buffer));
-    if (_tcslen(buffer)>0) {
-        if (_tcsstr(buffer,title)) {
-            return;
+    // Get the total number of lines in the document.
+    stats->total_lines=Editor_GetLines(stats->view_handle,POS_VIEW);
+
+    // As we want to analyze the line ends, get the raw line.
+    GET_LINE_INFO info;
+    info.flags=FLAG_WITH_CRLF;
+
+    // Always allocate at least MAX_PATH chars.
+    UINT_PTR size=MAX_PATH;
+    LPTSTR buffer=(LPTSTR)malloc(size*sizeof(TCHAR));
+
+    UINT_PTR const MAX_LINE_STEP=5000;
+
+    while (stats->curr_line < stats->total_lines) {
+        // Continuously output some progress.
+        if (stats->curr_line%MAX_LINE_STEP==0) {
+            ShowLineEndStatus(stats);
         }
-        _tcscat_s(buffer,_T(" "));
+
+        // Get the number of chars in the current line.
+        info.cch=0;
+        info.yLine=stats->curr_line;
+        UINT_PTR chars=Editor_GetLineW(stats->view_handle,&info,NULL);
+
+        // Adjust the buffer size if required.
+        if (size<chars) {
+            // Make room for twice the number of chars to reduce
+            // the number of possible future reallocations.
+            size=2*chars;
+            buffer=(LPTSTR)realloc(buffer,size*sizeof(TCHAR));
+        }
+
+        // Get the text of the current line.
+        info.cch=size;
+        Editor_GetLineW(stats->view_handle,&info,buffer);
+
+        // Jump to the last char in the line and check the line
+        // end style.
+        LPTSTR pos=buffer+chars-sizeof(TCHAR);
+        if (*pos==_T('\n')) {
+            if (pos>buffer && *(pos-1)==_T('\r')) {
+                ++stats->dos_count;
+            }
+            else {
+                ++stats->unix_count;
+            }
+        }
+        else if (*pos==_T('\r')) {
+            ++stats->mac_count;
+        }
+
+        ++stats->curr_line;
     }
 
-    _tcscat_s(buffer,title);
-    _tcscat_s(buffer,name);
+    free(buffer);
 
-    Editor_SetStatusW(view,buffer);
+    // Mark this thread as having finished.
+    stats->thread_addr=NULL;
+
+    return 0;
+}
+
+void EmPlugin::ShowLineEndStatus(LineEndStats const* stats)
+{
+    static LPCTSTR title=_T("Line End Style: ");
+
+    if (!stats) {
+        return;
+    }
+
+    TCHAR status[1024],prefix[512],suffix[512];
+
+    // Get the current status text.
+    Editor_GetStatusW(stats->view_handle,status,ARRAY_LENGTH(status));
+
+    ZeroMemory(prefix,ARRAY_LENGTH(prefix));
+    ZeroMemory(suffix,ARRAY_LENGTH(suffix));
+
+    // Copy everything before the start of the line end status text.
+    TCHAR* start=_tcsstr(status,title);
+    if (start) {
+        _tcsncpy_s(prefix,status,start-status);
+
+        // Copy everything after the end of the line end status text.
+        TCHAR* end=_tcschr(start,'.');
+        if (end) {
+            ++end;
+            _tcsncpy_s(suffix,end,_tcslen(end));
+        }
+    }
+    else {
+        // As there is no line end status text, there also is
+        // no prefix or suffix, so copy the whole string.
+        _tcsncpy_s(prefix,status,_tcslen(status));
+        _tcscat_s(prefix,_T(" "));
+    }
+
+#ifdef NDEBUG
+    if (stats->curr_line < stats->total_lines) {
+        _stprintf_s(
+            status,
+            _T("%s%s%s (%d/%d).%s"),
+            prefix,
+            title,
+            stats->getName(),
+            stats->curr_line,
+            stats->total_lines,
+            suffix
+        );
+    }
+    else {
+        _stprintf_s(
+            status,
+            _T("%s%s%s.%s"),
+            prefix,
+            title,
+            stats->getName(),
+            suffix
+        );
+    }
+#else
+    _stprintf_s(
+        status,
+        _T("%s%s%s, D:%d, U:%d, M:%d (%d/%d).%s"),
+        prefix,
+        title,
+        stats->getName(),
+        stats->dos_count,
+        stats->unix_count,
+        stats->mac_count,
+        stats->curr_line,
+        stats->total_lines,
+        suffix
+    );
+#endif
+
+    // Set the new status line text.
+    Editor_SetStatusW(stats->view_handle,status);
 }
 
 EmPlugin::EmPlugin()
+:   m_eol_stats(NULL)
 {
-    ZeroMemory(&m_eol_stats,sizeof(m_eol_stats));
-
     // Create a pop-up menu with the desired entries.
     m_menu_handle=CreatePopupMenu();
     if (!m_menu_handle) {
@@ -152,94 +281,71 @@ BOOL EmPlugin::QueryStatus(HWND hwndView,LPBOOL pbChecked)
 // When a status is changed, this function is called with the Events parameter.
 void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
 {
+    DWORD result;
+    TCHAR name[MAX_PATH];
+
+    // If a file is loaded, EVENT_FILE_OPENED is sent before EVENT_DOC_SEL_CHANGED,
+    // but when starting up with a new untitled document, only EVENT_DOC_SEL_CHANGED
+    // is sent.
     switch (nEvent) {
         case EVENT_FILE_OPENED: {
-            ZeroMemory(&m_eol_stats,sizeof(m_eol_stats));
-
-            // Analyze at most 5000 lines to not take too much CPU power / time.
-            const UINT_PTR MAX_LINES=5000;
-            UINT_PTR lines=Editor_GetLines(hwndView,POS_VIEW);
-
-            GET_LINE_INFO info;
-            info.flags=FLAG_WITH_CRLF;
-
-            // Always allocate at least MAX_PATH chars.
-            LPTSTR buffer=(LPTSTR)malloc(MAX_PATH*sizeof(TCHAR));
-            UINT_PTR size=MAX_PATH;
-
-            for (UINT_PTR i=0;i<min(lines,MAX_LINES);++i) {
-                // Adjust the required buffer size for a line of text.
-                info.cch=0;
-                info.yLine=i;
-                UINT_PTR chars=Editor_GetLineW(hwndView,&info,NULL);
-                if (size<chars) {
-                    // Double the size of the buffer right away to reduce the
-                    // number of possible future reallocations.
-                    size=2*chars;
-                    buffer=(LPTSTR)realloc(buffer,size*sizeof(TCHAR));
-                }
-
-                // Get the line of text.
-                info.cch=size;
-                Editor_GetLineW(hwndView,&info,buffer);
-                LPTSTR pos=buffer+chars-sizeof(TCHAR);
-                while (*pos!=_T('\n') && *pos!=_T('\r') && pos>buffer) {
-                    --pos;
-                }
-
-                if (*pos==_T('\n')) {
-                    if (pos>buffer && *(pos-1)==_T('\r')) {
-                        ++m_eol_stats.dos_count;
-                    }
-                    else {
-                        ++m_eol_stats.unix_count;
-                    }
-                }
-                else if (*pos==_T('\r')) {
-                    ++m_eol_stats.mac_count;
-                }
+            // Suspend any currently analyzing thread.
+            if (m_eol_stats && m_eol_stats->thread_addr) {
+                result=SuspendThread((HANDLE)m_eol_stats->thread_addr);
+                assert(result==0);
             }
 
-            // Add this file's stats to the hash table.
-            Editor_DocInfo(hwndView,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
-            m_eol_stats_table[buffer]=m_eol_stats;
+            // Create a new suspended thread for this document.
+            uintptr_t thread_addr=_beginthreadex(NULL,0,AnalyzeLineEnds,this,CREATE_SUSPENDED,NULL);
+            assert(thread_addr!=NULL);
 
-            free(buffer);
+            // Create an entry in the hash table for this document.
+            Editor_DocInfo(hwndView,-1,EI_GET_FILE_NAMEW,(LPARAM)name);
+            m_eol_stats_table[name]=LineEndStats(thread_addr,hwndView);
 
-            // No break here!
+            // Point to the stats of the current document.
+            m_eol_stats=&m_eol_stats_table[name];
+
+            // Run the thread for the current document.
+            result=ResumeThread((HANDLE)m_eol_stats->thread_addr);
+            assert(result==1);
+
+            break;
         }
         case EVENT_DOC_SEL_CHANGED: {
-            if (nEvent!=EVENT_FILE_OPENED) {
-                TCHAR buffer[MAX_PATH];
-                Editor_DocInfo(hwndView,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
-                m_eol_stats=m_eol_stats_table[buffer];
+            if (m_eol_stats && m_eol_stats->thread_addr) {
+                // Suspend any currently analyzing thread.
+                result=SuspendThread((HANDLE)m_eol_stats->thread_addr);
+                assert(result==0);
             }
-            // No break here!
+
+            // Point to the stats of the current document.
+            Editor_DocInfo(hwndView,-1,EI_GET_FILE_NAMEW,(LPARAM)name);
+            m_eol_stats=&m_eol_stats_table[name];
+
+            if (m_eol_stats->thread_addr) {
+                // Resume the thread for the current document.
+                result=ResumeThread((HANDLE)m_eol_stats->thread_addr);
+                assert(result==1);
+            }
+
+            break;
         }
         case EVENT_IDLE: {
-            if (m_eol_stats.isEmpty()) {
+            // Leave if we do not stats to display yet.
+            if (!m_eol_stats || m_eol_stats->isEmpty()) {
                 break;
             }
 
-            // Work-around for returned dummy line, which has always DOS line-endings.
-            if (m_eol_stats.dos_count==1
-            && ((m_eol_stats.unix_count>0 && m_eol_stats.mac_count==0) || (m_eol_stats.unix_count==0 && m_eol_stats.mac_count>0)))
+            // Work-around for the last dummy line in a document which always
+            // has DOS line-endings.
+            if (!m_eol_stats->thread_addr && m_eol_stats->dos_count==1
+            && ((m_eol_stats->unix_count>0 && m_eol_stats->mac_count==0) || (m_eol_stats->unix_count==0 && m_eol_stats->mac_count>0)))
             {
-                m_eol_stats.dos_count=0;
+                m_eol_stats->dos_count=0;
             }
 
-            if (m_eol_stats.isDOSStyle()) {
-                ShowLineEndStatus(hwndView,_T("DOS."));
-            }
-            else if (m_eol_stats.isUNIXStyle()) {
-                ShowLineEndStatus(hwndView,_T("UNIX."));
-            }
-            else if (m_eol_stats.isMACStyle()) {
-                ShowLineEndStatus(hwndView,_T("MAC."));
-            }
-            else {
-                ShowLineEndStatus(hwndView,_T("Mixed."));
-            }
+            ShowLineEndStatus(m_eol_stats);
 
             break;
         }
