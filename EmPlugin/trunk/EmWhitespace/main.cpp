@@ -2,6 +2,7 @@
 #include "config.h"
 
 #include <assert.h>
+#include <math.h>
 #include <process.h>
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(*x))
@@ -40,20 +41,39 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
         info.yLine=stats->curr_line;
         UINT_PTR chars=Editor_GetLineW(stats->view_handle,&info,NULL);
 
+        // WORK-AROUND: If the current document was switched, Editor_GetLineW()
+        // may already refer to the new document although EVENT_DOC_SEL_CHANGED
+        // was not sent yet. This leads to the wrong data being analyzed for the
+        // current stats. To solve this, we check if the current stats match the
+        // one for the current file name.
+        Editor_DocInfo(stats->view_handle,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
+        while (&static_cast<EmPlugin*>(_this)->m_eol_stats_table[buffer]!=stats) {
+            // Wait for EVENT_DOC_SEL_CHANGED being sent and stats to be adjusted.
+            Sleep(0);
+            Editor_DocInfo(stats->view_handle,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
+        }
+
         // Adjust the buffer size if required.
         if (size<chars) {
-            // Make room for twice the number of chars to reduce
-            // the number of possible future reallocations.
+            // Make room for twice the number of chars to reduce the number of
+            // possible future reallocations.
             size=2*chars;
             buffer=(LPTSTR)realloc(buffer,size*sizeof(TCHAR));
         }
 
         // Get the text of the current line.
         info.cch=size;
-        Editor_GetLineW(stats->view_handle,&info,buffer);
 
-        // Jump to the last char in the line and check the line
-        // end style.
+        // WORK-AROUND: If the current document was switched after the first but
+        // before the second call to Editor_GetLineW(), "chars" still contains
+        // the value for the old line, while "buffer" contains the new line. To
+        // solve this, we simply get the number of chars in the line again.
+        Editor_GetLineW(stats->view_handle,&info,buffer);
+        if (_tcslen(buffer)+1!=chars) {
+            continue;
+        }
+
+        // Jump to the last char in the line and check the line end style.
         LPTSTR pos=buffer+chars-sizeof(TCHAR);
         if (*pos==_T('\n')) {
             if (pos>buffer && *(pos-1)==_T('\r')) {
@@ -107,8 +127,8 @@ void EmPlugin::ShowLineEndStatus(LineEndStats const* stats)
         }
     }
     else {
-        // As there is no line end status text, there also is
-        // no prefix or suffix, so copy the whole string.
+        // As there is no line end status text, there also is no prefix or
+        // suffix, so copy the whole string.
         _tcsncpy_s(prefix,status,_tcslen(status));
         _tcscat_s(prefix,_T(" "));
     }
@@ -117,12 +137,11 @@ void EmPlugin::ShowLineEndStatus(LineEndStats const* stats)
     if (stats->curr_line < stats->total_lines) {
         _stprintf_s(
             status,
-            _T("%s%s%s (%d/%d).%s"),
+            _T("%s%s%s (%d%%).%s"),
             prefix,
             title,
             stats->getName(),
-            stats->curr_line,
-            stats->total_lines,
+            (int)ceilf(stats->curr_line*100.0f/stats->total_lines),
             suffix
         );
     }
@@ -272,8 +291,8 @@ void EmPlugin::OnCommand(HWND hwndView)
     }
 }
 
-// Queries the status of the plug-in, whether the command is enabled and
-// whether the plug-in is a checked status.
+// Queries the status of the plug-in, whether the command is enabled and whether
+// the plug-in is a checked status.
 BOOL EmPlugin::QueryStatus(HWND hwndView,LPBOOL pbChecked)
 {
     return TRUE;
@@ -338,8 +357,8 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
                 break;
             }
 
-            // Work-around for the last dummy line in a document which always
-            // has DOS line-endings.
+            // WORK-AROUND: Account for the last dummy line in a document which
+            // always has DOS line-endings.
             if (!m_eol_stats->thread_addr && m_eol_stats->dos_count==1
             && ((m_eol_stats->unix_count>0 && m_eol_stats->mac_count==0) || (m_eol_stats->unix_count==0 && m_eol_stats->mac_count>0)))
             {
