@@ -34,7 +34,8 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
             ShowLineEndStatus(stats);
         }
 
-        // Get the number of chars in the current line.
+        // Get the number of chars in the current line, including line end and
+        // null chars.
         info.cch=0;
         info.yLine=stats->curr_line;
         UINT_PTR chars=Editor_GetLineW(stats->view_handle,&info,NULL);
