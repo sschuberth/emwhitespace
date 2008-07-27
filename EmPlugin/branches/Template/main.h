@@ -9,9 +9,6 @@
 
 #include "resource.h"
 
-#include <hash_map>
-#include <string>
-
 class EmPlugin:public CETLFrame<EmPlugin>
 {
   public:
@@ -66,20 +63,6 @@ class EmPlugin:public CETLFrame<EmPlugin>
     ,   _MASK_256_COLOR  = RGB(0,255,0)
     };
 
-    enum MenuItem {
-        MI_SHOW_RETURNS     = 1
-    ,   MI_SHOW_EOF
-    ,   MI_SHOW_TABS
-    ,   MI_SHOW_SPACES
-
-    ,   MI_SPACES_TO_TABS
-    ,   MI_TABS_TO_SPACES
-    ,   MI_TRIM_WHITESPACES
-    };
-
-    EmPlugin();
-    ~EmPlugin();
-
     /*
      * Functions to Export
      */
@@ -112,66 +95,6 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
     // Called before each Windows message is translated.
     BOOL PreTranslateMessage(HWND hwndView,MSG* pMsg);
-
-  private:
-
-    struct LineEndStats {
-        // Address of the thread that fills this instance.
-        uintptr_t thread_addr;
-
-        // Window handle to the EmEditor document view.
-        HWND view_handle;
-
-        // The current and total number of lines in the document.
-        UINT_PTR curr_line,total_lines;
-
-        // Count of the different line end styles.
-        UINT_PTR dos_count,unix_count,mac_count;
-
-        LineEndStats(uintptr_t thread_addr=NULL,HWND view_handle=NULL)
-        :   thread_addr(thread_addr)
-        ,   view_handle(view_handle)
-        ,   curr_line(0)
-        ,   total_lines(0)
-        ,   dos_count(0)
-        ,   unix_count(0)
-        ,   mac_count(0)
-        {}
-
-        bool isEmpty() const {
-            return (dos_count==0 && unix_count==0 && mac_count==0);
-        }
-
-        bool isDOSStyle() const {
-            return (dos_count>0 && unix_count==0 && mac_count==0);
-        }
-
-        bool isUNIXStyle() const {
-            return (unix_count>0 && mac_count==0 && dos_count==0);
-        }
-
-        bool isMACStyle() const {
-            return (mac_count>0 && dos_count==0 && unix_count==0);
-        }
-
-        LPCTSTR getName() const {
-            return isDOSStyle()?_T("DOS"):(isUNIXStyle()?_T("UNIX"):(isMACStyle()?_T("MAC"):_T("Mixed")));
-        }
-    };
-
-    typedef std::basic_string<TCHAR> String;
-
-    static unsigned int __stdcall AnalyzeLineEnds(void* _this);
-    static void ShowLineEndStatus(LineEndStats const* stats);
-
-    // Handle to the pop-up menu triggered by the toolbar button.
-    HMENU m_menu_handle;
-
-    // Pointer to the line end stats of the current document.
-    LineEndStats* m_eol_stats;
-
-    // Hash table of line stats for all open documents.
-    stdext::hash_map<String,LineEndStats> m_eol_stats_table;
 };
 
 #endif // MAIN_H
