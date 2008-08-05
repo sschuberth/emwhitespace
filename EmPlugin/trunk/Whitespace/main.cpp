@@ -19,9 +19,10 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
     // Get the total number of lines in the document.
     stats->total_lines=Editor_GetLines(stats->view_handle,POS_VIEW);
 
-    // As we want to analyze the line ends, get the raw line.
+    // As we want to analyze the line ends, get the raw line. Without FLAG_LOGICAL,
+    // there is always a last dummy line with DOS line ends returned.
     GET_LINE_INFO info;
-    info.flags=FLAG_WITH_CRLF;
+    info.flags=FLAG_LOGICAL|FLAG_WITH_CRLF;
 
     // Always allocate at least MAX_PATH chars.
     UINT_PTR size=MAX_PATH;
@@ -40,6 +41,8 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
         info.cch=0;
         info.yLine=stats->curr_line;
         UINT_PTR chars=Editor_GetLineW(stats->view_handle,&info,NULL);
+
+        assert(chars>0);
 
         // WORK-AROUND: If the current document was switched, Editor_GetLineW()
         // may already refer to the new document although EVENT_DOC_SEL_CHANGED
@@ -74,7 +77,7 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
         }
 
         // Jump to the last char in the line and check the line end style.
-        LPTSTR pos=buffer+chars-sizeof(TCHAR);
+        LPTSTR pos=buffer+chars-2;
         if (*pos==_T('\n')) {
             if (pos>buffer && *(pos-1)==_T('\r')) {
                 ++stats->dos_count;
@@ -136,38 +139,38 @@ void EmPlugin::ShowLineEndStatus(LineEndStats const* stats)
 #ifdef NDEBUG
     if (stats->curr_line < stats->total_lines) {
         _stprintf_s(
-            status,
-            _T("%s%s%s (%d%%).%s"),
-            prefix,
-            title,
-            stats->getName(),
-            (int)ceilf(stats->curr_line*100.0f/stats->total_lines),
-            suffix
+            status
+        ,   _T("%s%s%s (%d%%).%s")
+        ,   prefix
+        ,   title
+        ,   stats->getName()
+        ,   (int)ceilf(stats->curr_line*100.0f/stats->total_lines)
+        ,   suffix
         );
     }
     else {
         _stprintf_s(
-            status,
-            _T("%s%s%s.%s"),
-            prefix,
-            title,
-            stats->getName(),
-            suffix
+            status
+        ,   _T("%s%s%s.%s")
+        ,   prefix
+        ,   title
+        ,   stats->getName()
+        ,   suffix
         );
     }
 #else
     _stprintf_s(
-        status,
-        _T("%s%s%s, D:%d, U:%d, M:%d (%d/%d).%s"),
-        prefix,
-        title,
-        stats->getName(),
-        stats->dos_count,
-        stats->unix_count,
-        stats->mac_count,
-        stats->curr_line,
-        stats->total_lines,
-        suffix
+        status
+    ,   _T("%s%s%s, D:%d, U:%d, M:%d (%d/%d).%s")
+    ,   prefix
+    ,   title
+    ,   stats->getName()
+    ,   stats->dos_count
+    ,   stats->unix_count
+    ,   stats->mac_count
+    ,   stats->curr_line
+    ,   stats->total_lines
+    ,   suffix
     );
 #endif
 
@@ -355,14 +358,6 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
             // Leave if we do not stats to display yet.
             if (!m_eol_stats || m_eol_stats->isEmpty()) {
                 break;
-            }
-
-            // WORK-AROUND: Account for the last dummy line in a document which
-            // always has DOS line-endings.
-            if (!m_eol_stats->thread_addr && m_eol_stats->dos_count==1
-            && ((m_eol_stats->unix_count>0 && m_eol_stats->mac_count==0) || (m_eol_stats->unix_count==0 && m_eol_stats->mac_count>0)))
-            {
-                m_eol_stats->dos_count=0;
             }
 
             ShowLineEndStatus(m_eol_stats);
