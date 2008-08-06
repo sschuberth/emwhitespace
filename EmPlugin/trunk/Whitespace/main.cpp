@@ -42,52 +42,53 @@ unsigned int EmPlugin::AnalyzeLineEnds(void* _this)
         info.yLine=stats->curr_line;
         UINT_PTR chars=Editor_GetLineW(stats->view_handle,&info,NULL);
 
-        assert(chars>0);
-
-        // WORK-AROUND: If the current document was switched, Editor_GetLineW()
-        // may already refer to the new document although EVENT_DOC_SEL_CHANGED
-        // was not sent yet. This leads to the wrong data being analyzed for the
-        // current stats. To solve this, we check if the current stats match the
-        // one for the current file name.
-        Editor_DocInfo(stats->view_handle,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
-        while (&static_cast<EmPlugin*>(_this)->m_eol_stats_table[buffer]!=stats) {
-            // Wait for EVENT_DOC_SEL_CHANGED being sent and stats to be adjusted.
-            Sleep(0);
+        // Only do something if there is more than the terminating \0 character.
+        if (chars>1) {
+            // WORK-AROUND: If the current document was switched, Editor_GetLineW()
+            // may already refer to the new document although EVENT_DOC_SEL_CHANGED
+            // was not sent yet. This leads to the wrong data being analyzed for the
+            // current stats. To solve this, we check if the current stats match the
+            // one for the current file name.
             Editor_DocInfo(stats->view_handle,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
-        }
-
-        // Adjust the buffer size if required.
-        if (size<chars) {
-            // Make room for twice the number of chars to reduce the number of
-            // possible future reallocations.
-            size=2*chars;
-            buffer=(LPTSTR)realloc(buffer,size*sizeof(TCHAR));
-        }
-
-        // Get the text of the current line.
-        info.cch=size;
-
-        // WORK-AROUND: If the current document was switched after the first but
-        // before the second call to Editor_GetLineW(), "chars" still contains
-        // the value for the old line, while "buffer" contains the new line. To
-        // solve this, we simply get the number of chars in the line again.
-        Editor_GetLineW(stats->view_handle,&info,buffer);
-        if (_tcslen(buffer)+1!=chars) {
-            continue;
-        }
-
-        // Jump to the last char in the line and check the line end style.
-        LPTSTR pos=buffer+chars-2;
-        if (*pos==_T('\n')) {
-            if (pos>buffer && *(pos-1)==_T('\r')) {
-                ++stats->dos_count;
+            while (&static_cast<EmPlugin*>(_this)->m_eol_stats_table[buffer]!=stats) {
+                // Wait for EVENT_DOC_SEL_CHANGED being sent and stats to be adjusted.
+                Sleep(0);
+                Editor_DocInfo(stats->view_handle,-1,EI_GET_FILE_NAMEW,(LPARAM)buffer);
             }
-            else {
-                ++stats->unix_count;
+
+            // Adjust the buffer size if required.
+            if (size<chars) {
+                // Make room for twice the number of chars to reduce the number of
+                // possible future reallocations.
+                size=2*chars;
+                buffer=(LPTSTR)realloc(buffer,size*sizeof(TCHAR));
             }
-        }
-        else if (*pos==_T('\r')) {
-            ++stats->mac_count;
+
+            // Get the text of the current line.
+            info.cch=size;
+
+            // WORK-AROUND: If the current document was switched after the first but
+            // before the second call to Editor_GetLineW(), "chars" still contains
+            // the value for the old line, while "buffer" contains the new line. To
+            // solve this, we simply get the number of chars in the line again.
+            Editor_GetLineW(stats->view_handle,&info,buffer);
+            if (_tcslen(buffer)+1!=chars) {
+                continue;
+            }
+
+            // Jump to the last char in the line and check the line end style.
+            LPTSTR pos=buffer+chars-2;
+            if (*pos==_T('\n')) {
+                if (pos>buffer && *(pos-1)==_T('\r')) {
+                    ++stats->dos_count;
+                }
+                else {
+                    ++stats->unix_count;
+                }
+            }
+            else if (*pos==_T('\r')) {
+                ++stats->mac_count;
+            }
         }
 
         ++stats->curr_line;
