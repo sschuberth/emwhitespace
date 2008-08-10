@@ -196,7 +196,7 @@ EmPlugin::EmPlugin()
     // Separate toggle items from action items.
     AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
 
-    AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert Spaces to Tabs (Tabify)"));
+    AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert leading Spaces to Tabs (Tabify)"));
     AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Convert Tabs to Spaces (Untabify)"));
     AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
 }
