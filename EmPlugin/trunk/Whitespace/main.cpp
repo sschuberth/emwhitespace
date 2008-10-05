@@ -150,7 +150,7 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
             // Separate items available only since EmEditor 8.
             AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
 
-            AppendMenu(m_menu_handle,MF_STRING,MI_FINAL_LINE_END,_T("Ensure final Line-End"));
+            AppendMenu(m_menu_handle,MF_STRING,MI_FINAL_LINE_END,_T("Ensure final Line-End on Save"));
         }
 
         // Separate toggle items from action items.
