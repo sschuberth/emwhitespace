@@ -9,24 +9,9 @@
 _ETL_IMPLEMENT
 
 EmPlugin::EmPlugin()
+:   m_menu_handle(NULL)
+,   m_final_line_end(0)
 {
-    // Create a pop-up menu with the desired entries.
-    m_menu_handle=CreatePopupMenu();
-    if (!m_menu_handle) {
-        return;
-    }
-
-    AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_RETURNS,_T("Show Returns"));
-    AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_EOF,_T("Show End of File"));
-    AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_TABS,_T("Show Tabs"));
-    AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_SPACES,_T("Show Spaces"));
-
-    // Separate toggle items from action items.
-    AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
-
-    AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert leading Spaces to Tabs (Tabify)"));
-    AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Convert Tabs to Spaces (Untabify)"));
-    AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
 }
 
 EmPlugin::~EmPlugin()
@@ -54,15 +39,17 @@ void EmPlugin::OnCommand(HWND hwndView)
         return;
     }
 
-    CheckMenuItem(m_menu_handle,MI_SHOW_RETURNS,info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_LINE_ENDS,info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_EOF,info.m_bShowEOF?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_TABS,info.m_bShowTab?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_SPACES,info.m_bShowSpace?MF_CHECKED:MF_UNCHECKED);
 
+    CheckMenuItem(m_menu_handle,MI_FINAL_LINE_END,m_final_line_end?MF_CHECKED:MF_UNCHECKED);
+
     // Display the pop-up menu and wait for a choice.
     UINT item=(UINT)TrackPopupMenuEx(m_menu_handle,TPM_LEFTALIGN|TPM_TOPALIGN|TPM_RETURNCMD,mouse_pos.x,mouse_pos.y,hwndView,NULL);
     switch (item) {
-        case MI_SHOW_RETURNS: {
+        case MI_SHOW_LINE_ENDS: {
             info.m_bShowCR=!info.m_bShowCR;
             config.SetConfig(info);
             break;
@@ -80,6 +67,23 @@ void EmPlugin::OnCommand(HWND hwndView)
         case MI_SHOW_SPACES: {
             info.m_bShowSpace=!info.m_bShowSpace;
             config.SetConfig(info);
+            break;
+        }
+
+        case MI_FINAL_LINE_END: {
+            // Toggle the setting and immediately store it.
+            m_final_line_end=!m_final_line_end;
+            LONG result=Editor_RegSetValue(
+                hwndView,
+                EEREG_EMEDITORPLUGIN,
+                _T("Whitespace"),
+                _T("FinalLineEnd"),
+                REG_DWORD,
+                (BYTE const*)&m_final_line_end,
+                sizeof(m_final_line_end),
+                0
+            );
+            assert(result==ERROR_SUCCESS);
             break;
         }
 
@@ -133,15 +137,102 @@ BOOL EmPlugin::QueryStatus(HWND hwndView,LPBOOL pbChecked)
 // When a status is changed, this function is called with the Events parameter.
 void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
 {
-    //DWORD result;
-    //TCHAR name[MAX_PATH];
+    if (!m_menu_handle) {
+        // Create a pop-up menu with the desired entries.
+        m_menu_handle=CreatePopupMenu();
+
+        AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_LINE_ENDS,_T("Show Line-Ends"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_EOF,_T("Show End of File"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_TABS,_T("Show Tabs"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_SPACES,_T("Show Spaces"));
+
+        if (Editor_GetVersion(hwndView)>=8000) {
+            // Separate items available only since EmEditor 8.
+            AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
+
+            AppendMenu(m_menu_handle,MF_STRING,MI_FINAL_LINE_END,_T("Ensure final Line-End"));
+        }
+
+        // Separate toggle items from action items.
+        AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
+
+        AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert leading Spaces to Tabs (Tabify)"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Convert Tabs to Spaces (Untabify)"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
+
+        // Read the initial from the stored settings.
+        DWORD size=sizeof(m_final_line_end);
+        LONG result=Editor_RegQueryValue(
+            hwndView,
+            EEREG_EMEDITORPLUGIN,
+            _T("Whitespace"),
+            _T("FinalLineEnd"),
+            REG_DWORD,
+            (BYTE*)&m_final_line_end,
+            &size,
+            0
+        );
+        assert(result==ERROR_SUCCESS);
+    }
 
     UINT const EVENT_SAVING=0x04000000;
 
-    switch (nEvent) {
-        case EVENT_SAVING: {
+    if (nEvent==EVENT_SAVING && m_final_line_end) {
+        bool finalize=true;
 
-            break;
+        // Get the total number of lines in the document.
+        UINT_PTR lines=Editor_GetLines(hwndView,POS_VIEW);
+
+        // As we want to analyze the line ends, get the raw line. Without
+        // FLAG_LOGICAL, there is always a last dummy line with DOS line ends
+        // returned.
+        GET_LINE_INFO info;
+        info.flags=FLAG_LOGICAL|FLAG_WITH_CRLF;
+
+        // Get the number of chars in the current line, including line end and
+        // the terminating \0 character.
+        info.cch=0;
+        info.yLine=lines-1;
+        UINT_PTR chars=Editor_GetLineW(hwndView,&info,NULL);
+
+        // Only do something if there is more than the terminating \0 character.
+        if (chars>1) {
+            LPTSTR buffer=(LPTSTR)malloc(chars*sizeof(TCHAR));
+            if (buffer) {
+                // Get the text of the current line.
+                info.cch=chars;
+                Editor_GetLineW(hwndView,&info,buffer);
+
+                // Jump to the last char in the line and check the line end style.
+                LPTSTR pos=buffer+chars-2;
+                finalize=(*pos!=_T('\n') && *pos!=_T('\r'));
+                free(buffer);
+            }
+        }
+
+        if (finalize) {
+            // Save a possible selection.
+            POINT_PTR sel_start,sel_end;
+            Editor_GetSelStart(hwndView,POS_VIEW,&sel_start);
+            Editor_GetSelEnd(hwndView,POS_VIEW,&sel_end);
+            UINT sel_type=Editor_GetSelType(hwndView);
+
+            // Save the cursor position.
+            POINT_PTR caret_old,caret_new={chars-1,lines-1};
+            Editor_GetCaretPos(hwndView,POS_VIEW,&caret_old);
+
+            // Insert a final line end.
+            Editor_SetCaretPos(hwndView,POS_VIEW,&caret_new);
+            Editor_InsertW(hwndView,_T("\n"),true);
+
+            // Restore a possible selection.
+            if (sel_start.x==caret_old.x && sel_start.y==caret_old.y) {
+                Editor_SetSelView(hwndView,&sel_end,&sel_start);
+            }
+            else {
+                Editor_SetSelView(hwndView,&sel_start,&sel_end);
+            }
+            Editor_SetSelTypeEx(hwndView,FALSE,sel_type);
         }
     }
 }

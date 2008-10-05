@@ -54,8 +54,8 @@ class EmPlugin:public CETLFrame<EmPlugin>
     enum {
         _ALLOW_OPEN_SAME_GROUP    = TRUE  // Is it allowed to open a file in the same window group during plug-in execution?
     ,   _ALLOW_MULTIPLE_INSTANCES = TRUE  // Is it allowed to have multiple instances?
-    ,   _MAX_EE_VERSION           = 7100  // Newest supported EmEditor version * 1000 (the plug-in was developed against EmEditor 7.01, leave some room for newer versions).
-    ,   _MIN_EE_VERSION           = 6000  // Oldest supported EmEditor version * 1000 (the used EVENT_IDLE is supported since EmEditor 6.00).
+    ,   _MAX_EE_VERSION           = 8000  // Newest supported EmEditor version * 1000 (the plug-in was developed against EmEditor 7.01 and 8.00 beta).
+    ,   _MIN_EE_VERSION           = 7000  // Oldest supported EmEditor version * 1000 (the used Editor_RegQueryValue is supported since EmEditor 7.00).
     ,   _SUPPORT_EE_PRO           = TRUE  // Is EmEditor Professional supported?
     ,   _SUPPORT_EE_STD           = TRUE  // Is EmEditor Standard supported?
     };
@@ -67,10 +67,12 @@ class EmPlugin:public CETLFrame<EmPlugin>
     };
 
     enum MenuItem {
-        MI_SHOW_RETURNS     = 1
+        MI_SHOW_LINE_ENDS   = 1
     ,   MI_SHOW_EOF
     ,   MI_SHOW_TABS
     ,   MI_SHOW_SPACES
+
+    ,   MI_FINAL_LINE_END
 
     ,   MI_SPACES_TO_TABS
     ,   MI_TABS_TO_SPACES
@@ -117,6 +119,9 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
     // Handle to the pop-up menu triggered by the toolbar button.
     HMENU m_menu_handle;
+
+    // Stores whether to add a final line-end on save or not.
+    DWORD m_final_line_end;
 };
 
 #endif // MAIN_H
