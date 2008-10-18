@@ -54,7 +54,7 @@ class EmPlugin:public CETLFrame<EmPlugin>
     enum {
         _ALLOW_OPEN_SAME_GROUP    = TRUE  // Is it allowed to open a file in the same window group during plug-in execution?
     ,   _ALLOW_MULTIPLE_INSTANCES = TRUE  // Is it allowed to have multiple instances?
-    ,   _MAX_EE_VERSION           = 8000  // Newest supported EmEditor version * 1000 (the plug-in was developed against EmEditor 7.02 and 8.00 beta).
+    ,   _MAX_EE_VERSION           = 8000  // Newest supported EmEditor version * 1000 (the plug-in was developed against EmEditor 7.01 and 8.00 beta).
     ,   _MIN_EE_VERSION           = 7000  // Oldest supported EmEditor version * 1000 (the used Editor_RegQueryValue is supported since EmEditor 7.00).
     ,   _SUPPORT_EE_PRO           = TRUE  // Is EmEditor Professional supported?
     ,   _SUPPORT_EE_STD           = TRUE  // Is EmEditor Standard supported?
