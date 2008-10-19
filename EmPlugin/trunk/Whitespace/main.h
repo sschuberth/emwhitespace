@@ -121,7 +121,7 @@ class EmPlugin:public CETLFrame<EmPlugin>
     HMENU m_menu_handle;
 
     // Stores whether to add a final line-end on save or not.
-    DWORD m_final_line_end;
+    bool m_final_line_end;
 };
 
 #endif // MAIN_H

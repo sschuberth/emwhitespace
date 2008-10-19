@@ -10,7 +10,7 @@ _ETL_IMPLEMENT
 
 EmPlugin::EmPlugin()
 :   m_menu_handle(NULL)
-,   m_final_line_end(0)
+,   m_final_line_end(false)
 {
 }
 
@@ -74,14 +74,7 @@ void EmPlugin::OnCommand(HWND hwndView)
             // Toggle the setting and immediately store it.
             m_final_line_end=!m_final_line_end;
             LONG result=Editor_RegSetValue(
-                hwndView,
-                EEREG_EMEDITORPLUGIN,
-                _T("Whitespace"),
-                _T("FinalLineEnd"),
-                REG_DWORD,
-                (BYTE const*)&m_final_line_end,
-                sizeof(m_final_line_end),
-                0
+                hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("FinalLineEnd"),REG_DWORD,(BYTE const*)&m_final_line_end,sizeof(m_final_line_end),0
             );
             assert(result==ERROR_SUCCESS);
             break;
@@ -163,14 +156,7 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         // Read the initial from the stored settings.
         DWORD size=sizeof(m_final_line_end);
         LONG result=Editor_RegQueryValue(
-            hwndView,
-            EEREG_EMEDITORPLUGIN,
-            _T("Whitespace"),
-            _T("FinalLineEnd"),
-            REG_DWORD,
-            (BYTE*)&m_final_line_end,
-            &size,
-            0
+            hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("FinalLineEnd"),REG_DWORD,(BYTE*)&m_final_line_end,&size,0
         );
         assert(result==ERROR_SUCCESS);
     }
