@@ -290,3 +290,67 @@ BOOL EmPlugin::PreTranslateMessage(HWND hwndView,MSG* pMsg)
 {
     return FALSE;
 }
+
+/*
+ * Private helper methods
+ */
+
+void EmPlugin::SaveWhitespaceConfig(HWND hwndView,CCustomizeInfo const& config_info)
+{
+    LONG result;
+
+    result=Editor_RegSetValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowLineEnds"),REG_DWORD,(BYTE const*)&config_info.m_bShowCR,sizeof(config_info.m_bShowCR),0
+    );
+    assert(result==ERROR_SUCCESS);
+
+    result=Editor_RegSetValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowEOF"),REG_DWORD,(BYTE const*)&config_info.m_bShowEOF,sizeof(config_info.m_bShowEOF),0
+    );
+    assert(result==ERROR_SUCCESS);
+
+    result=Editor_RegSetValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowTabs"),REG_DWORD,(BYTE const*)&config_info.m_bShowTab,sizeof(config_info.m_bShowTab),0
+    );
+    assert(result==ERROR_SUCCESS);
+
+    result=Editor_RegSetValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowSpaces"),REG_DWORD,(BYTE const*)&config_info.m_bShowSpace,sizeof(config_info.m_bShowSpace),0
+    );
+    assert(result==ERROR_SUCCESS);
+}
+
+void EmPlugin::LoadWhitespaceConfig(HWND hwndView,CCustomizeInfo& config_info)
+{
+    bool toggle;
+    DWORD size=sizeof(toggle);
+    LONG result;
+
+    result=Editor_RegQueryValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowLineEnds"),REG_DWORD,(BYTE*)&toggle,&size,0
+    );
+    if (result==ERROR_SUCCESS) {
+        config_info.m_bShowCR=toggle;
+    }
+
+    result=Editor_RegQueryValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowEOF"),REG_DWORD,(BYTE*)&toggle,&size,0
+    );
+    if (result==ERROR_SUCCESS) {
+        config_info.m_bShowEOF=toggle;
+    }
+
+    result=Editor_RegQueryValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowTabs"),REG_DWORD,(BYTE*)&toggle,&size,0
+    );
+    if (result==ERROR_SUCCESS) {
+        config_info.m_bShowTab=toggle;
+    }
+
+    result=Editor_RegQueryValue(
+        hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowSpaces"),REG_DWORD,(BYTE*)&toggle,&size,0
+    );
+    if (result==ERROR_SUCCESS) {
+        config_info.m_bShowSpace=toggle;
+    }
+}

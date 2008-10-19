@@ -119,6 +119,12 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
   private:
 
+    // Backup whitespace related settings to the plug-in's registry settings.
+    void SaveWhitespaceConfig(HWND hwndView,CCustomizeInfo const& config_info);
+
+    // Restore whitespace related settings from the plug-in's registry settings.
+    void LoadWhitespaceConfig(HWND hwndView,CCustomizeInfo& config_info);
+
     // Handle to the pop-up menu triggered by the toolbar button.
     HMENU m_menu_handle;
 
