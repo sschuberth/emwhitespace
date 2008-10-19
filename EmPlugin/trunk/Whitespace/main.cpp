@@ -153,7 +153,7 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Convert Tabs to Spaces (Untabify)"));
         AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
 
-        // Read the initial from the stored settings.
+        // Get the initial values from the stored settings.
         DWORD size=sizeof(m_final_line_end);
         LONG result=Editor_RegQueryValue(
             hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("FinalLineEnd"),REG_DWORD,(BYTE*)&m_final_line_end,&size,0
