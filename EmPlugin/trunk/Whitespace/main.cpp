@@ -10,6 +10,7 @@ _ETL_IMPLEMENT
 
 EmPlugin::EmPlugin()
 :   m_menu_handle(NULL)
+,   m_show_whitespaces(true)
 ,   m_final_line_end(false)
 {
 }
@@ -39,6 +40,8 @@ void EmPlugin::OnCommand(HWND hwndView)
         return;
     }
 
+    CheckMenuItem(m_menu_handle,MI_TOGGLE_WHITESPACES,m_show_whitespaces?MF_CHECKED:MF_UNCHECKED);
+
     CheckMenuItem(m_menu_handle,MI_SHOW_LINE_ENDS,config_info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_EOF,config_info.m_bShowEOF?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_TABS,config_info.m_bShowTab?MF_CHECKED:MF_UNCHECKED);
@@ -49,6 +52,16 @@ void EmPlugin::OnCommand(HWND hwndView)
     // Display the pop-up menu and wait for a choice.
     UINT item=(UINT)TrackPopupMenuEx(m_menu_handle,TPM_LEFTALIGN|TPM_TOPALIGN|TPM_RETURNCMD,mouse_pos.x,mouse_pos.y,hwndView,NULL);
     switch (item) {
+        case MI_TOGGLE_WHITESPACES: {
+            // Toggle the setting and immediately store it.
+            m_show_whitespaces=!m_show_whitespaces;
+            LONG result=Editor_RegSetValue(
+                hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowWhitespaces"),REG_DWORD,(BYTE const*)&m_show_whitespaces,sizeof(m_show_whitespaces),0
+            );
+            assert(result==ERROR_SUCCESS);
+            break;
+        }
+
         case MI_SHOW_LINE_ENDS: {
             config_info.m_bShowCR=!config_info.m_bShowCR;
             config.SetConfig(config_info);
@@ -134,6 +147,11 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         // Create a pop-up menu with the desired entries.
         m_menu_handle=CreatePopupMenu();
 
+        AppendMenu(m_menu_handle,MF_STRING,MI_TOGGLE_WHITESPACES,_T("Toggle current Whitespace display"));
+
+        // Separate the global toggle from the specific toggles.
+        AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
+
         AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_LINE_ENDS,_T("Show Line-Ends"));
         AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_EOF,_T("Show End of File"));
         AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_TABS,_T("Show Tabs"));
@@ -154,11 +172,18 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
 
         // Get the initial values from the stored settings.
-        DWORD size=sizeof(m_final_line_end);
-        LONG result=Editor_RegQueryValue(
+        DWORD size;
+        LONG result;
+
+        size=sizeof(m_show_whitespaces);
+        result=Editor_RegQueryValue(
+            hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("ShowWhitespaces"),REG_DWORD,(BYTE*)&m_show_whitespaces,&size,0
+        );
+
+        size=sizeof(m_final_line_end);
+        result=Editor_RegQueryValue(
             hwndView,EEREG_EMEDITORPLUGIN,_T("Whitespace"),_T("FinalLineEnd"),REG_DWORD,(BYTE*)&m_final_line_end,&size,0
         );
-        assert(result==ERROR_SUCCESS);
     }
 
     UINT const EVENT_SAVING=0x04000000;

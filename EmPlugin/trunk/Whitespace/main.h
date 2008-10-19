@@ -67,7 +67,9 @@ class EmPlugin:public CETLFrame<EmPlugin>
     };
 
     enum MenuItem {
-        MI_SHOW_LINE_ENDS   = 1
+        MI_TOGGLE_WHITESPACES = 1
+
+    ,   MI_SHOW_LINE_ENDS
     ,   MI_SHOW_EOF
     ,   MI_SHOW_TABS
     ,   MI_SHOW_SPACES
@@ -119,6 +121,9 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
     // Handle to the pop-up menu triggered by the toolbar button.
     HMENU m_menu_handle;
+
+    // Stores whether to show the selected whitespace characters or not.
+    bool m_show_whitespaces;
 
     // Stores whether to add a final line-end on save or not.
     bool m_final_line_end;
