@@ -34,15 +34,15 @@ void EmPlugin::OnCommand(HWND hwndView)
 
     // Set the menu check-marks according to the current configuration.
     EmConfig config(hwndView);
-    CCustomizeInfo info;
-    if (!config.GetConfig(info)) {
+    CCustomizeInfo config_info;
+    if (!config.GetConfig(config_info)) {
         return;
     }
 
-    CheckMenuItem(m_menu_handle,MI_SHOW_LINE_ENDS,info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
-    CheckMenuItem(m_menu_handle,MI_SHOW_EOF,info.m_bShowEOF?MF_CHECKED:MF_UNCHECKED);
-    CheckMenuItem(m_menu_handle,MI_SHOW_TABS,info.m_bShowTab?MF_CHECKED:MF_UNCHECKED);
-    CheckMenuItem(m_menu_handle,MI_SHOW_SPACES,info.m_bShowSpace?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_LINE_ENDS,config_info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_EOF,config_info.m_bShowEOF?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_TABS,config_info.m_bShowTab?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_SPACES,config_info.m_bShowSpace?MF_CHECKED:MF_UNCHECKED);
 
     CheckMenuItem(m_menu_handle,MI_FINAL_LINE_END,m_final_line_end?MF_CHECKED:MF_UNCHECKED);
 
@@ -50,23 +50,23 @@ void EmPlugin::OnCommand(HWND hwndView)
     UINT item=(UINT)TrackPopupMenuEx(m_menu_handle,TPM_LEFTALIGN|TPM_TOPALIGN|TPM_RETURNCMD,mouse_pos.x,mouse_pos.y,hwndView,NULL);
     switch (item) {
         case MI_SHOW_LINE_ENDS: {
-            info.m_bShowCR=!info.m_bShowCR;
-            config.SetConfig(info);
+            config_info.m_bShowCR=!config_info.m_bShowCR;
+            config.SetConfig(config_info);
             break;
         }
         case MI_SHOW_EOF: {
-            info.m_bShowEOF=!info.m_bShowEOF;
-            config.SetConfig(info);
+            config_info.m_bShowEOF=!config_info.m_bShowEOF;
+            config.SetConfig(config_info);
             break;
         }
         case MI_SHOW_TABS: {
-            info.m_bShowTab=!info.m_bShowTab;
-            config.SetConfig(info);
+            config_info.m_bShowTab=!config_info.m_bShowTab;
+            config.SetConfig(config_info);
             break;
         }
         case MI_SHOW_SPACES: {
-            info.m_bShowSpace=!info.m_bShowSpace;
-            config.SetConfig(info);
+            config_info.m_bShowSpace=!config_info.m_bShowSpace;
+            config.SetConfig(config_info);
             break;
         }
 
