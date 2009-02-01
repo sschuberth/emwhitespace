@@ -147,7 +147,7 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         // Create a pop-up menu with the desired entries.
         m_menu_handle=CreatePopupMenu();
 
-        AppendMenu(m_menu_handle,MF_STRING,MI_TOGGLE_WHITESPACES,_T("Toggle current Whitespace display"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_TOGGLE_WHITESPACES,_T("Toggle current display"));
 
         // Separate the global toggle from the specific toggles.
         AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
@@ -161,14 +161,14 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
             // Separate items available only since EmEditor 8.
             AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
 
-            AppendMenu(m_menu_handle,MF_STRING,MI_FINAL_LINE_END,_T("Ensure final Line-End on Save"));
+            AppendMenu(m_menu_handle,MF_STRING,MI_FINAL_LINE_END,_T("Ensure final Line-End"));
         }
 
         // Separate toggle items from action items.
         AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);
 
-        AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Convert leading Spaces to Tabs (Tabify)"));
-        AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Convert Tabs to Spaces (Untabify)"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_SPACES_TO_TABS,_T("Spaces to Tabs (Tabify)"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_TABS_TO_SPACES,_T("Tabs to Spaces (Untabify)"));
         AppendMenu(m_menu_handle,MF_STRING,MI_TRIM_WHITESPACES,_T("Trim Trailing Whitespaces"));
 
         // Get the initial values from the stored settings.
