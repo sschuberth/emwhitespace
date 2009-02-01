@@ -4,6 +4,8 @@
 
 #include "plugin.h"
 #include <crtdbg.h>
+#include <shlwapi.h>
+#include <strsafe.h>
 
 #pragma warning( push )
 #pragma warning( disable : 4995 ) // 'function': name was marked as #pragma deprecated
@@ -44,6 +46,9 @@
 #endif
 #endif
 
+
+LPCTSTR const szDefaultLang = _T("DefaultLang");
+
 // forward declaration
 #define DEFINE_CREATE(c)
 class ETL_FRAME_CLASS_NAME;
@@ -52,6 +57,9 @@ typedef CETLFrame<ETL_FRAME_CLASS_NAME> CETLFrameX;
 typedef std::map<HWND, CETLFrameX*> CETLFrameMap;
 CETLFrameX* _ETLCreateFrame();
 void _ETLDeleteFrame( CETLFrameX* pFrame );
+BOOL IsFileExist( LPCTSTR pszPathName );
+void GetModuleFilePath( LPCTSTR szFile, LPTSTR szPath );
+HINSTANCE GetInstancePath( LPCTSTR szPath );
 
 #define _ETL_IMPLEMENT CETLFrameX* _ETLCreateFrame() { CETLFrameX* pFrame = new ETL_FRAME_CLASS_NAME; return pFrame; } void _ETLDeleteFrame( CETLFrameX* pFrame ) { delete static_cast<ETL_FRAME_CLASS_NAME*>(pFrame); }
 
@@ -60,6 +68,7 @@ class CETLData
 {
 public:
     HINSTANCE           m_hInstance;
+    HINSTANCE           m_hinstLoc;
     CRITICAL_SECTION    m_cs;
     CETLFrameMap*       m_pETLFrameMap;
     WORD                m_wCmdID;
@@ -84,11 +93,20 @@ public:
     {
         ::LeaveCriticalSection( &m_cs );
     }
-} _ETLData;
+};
+
+#ifndef EE_EXTERN_ONLY
+class CETLData _ETLData;
+#endif
+
 
 class CETLLock
 {
 public:
+#ifdef EE_EXTERN_ONLY
+    CETLLock();
+    ~CETLLock();
+#else
     CETLLock()
     {
         _ETLData.Lock();
@@ -98,6 +116,7 @@ public:
     {
         _ETLData.Unlock();
     }
+#endif
 };
 
 template <typename T> class __declspec(novtable) CETLFrame
@@ -132,12 +151,22 @@ public:
 
     static UINT GetMenuTextID()
     {
-        return T::_IDS_MENU;
+        if( T::_USE_LOC_DLL ){
+            return 0;
+        }
+        else {
+            return T::_IDS_MENU;
+        }
     }
 
     static UINT GetStatusMessageID()
     {
-        return T::_IDS_STATUS;
+        if(  T::_USE_LOC_DLL ){
+            return 0;
+        }
+        else {
+            return T::_IDS_STATUS;
+        }
     }
 
     static UINT GetBitmapID()
@@ -148,10 +177,14 @@ public:
     static LRESULT GetStringA( LPSTR pBuf, size_t cchBuf, UINT nID )
     {
         char sz[80];
-        LRESULT lResult = LoadStringA( EEGetInstanceHandle(), nID, sz, _countof( sz ) ) + 1;
-        _ASSERTE( lResult > 1 );
-        if( pBuf ){
-            lstrcpynA( pBuf, sz, (int)cchBuf );
+        HINSTANCE hinst = EEGetLocaleInstanceHandle();
+        LRESULT lResult = 0;
+        if( hinst ){
+            lResult = LoadStringA( hinst, nID, sz, _countof( sz ) ) + 1;
+            _ASSERTE( lResult > 1 );
+            if( pBuf ){
+                lstrcpynA( pBuf, sz, (int)cchBuf );
+            }
         }
         return lResult;
     }
@@ -159,10 +192,14 @@ public:
     static LRESULT GetStringW( LPWSTR pBuf, size_t cchBuf, UINT nID )
     {
         WCHAR sz[80];
-        LRESULT lResult = LoadStringW( EEGetInstanceHandle(), nID, sz, _countof( sz ) ) + 1;   // LoadStringW does not work on Windows 9x, but that is OK.
-        _ASSERTE( lResult > 1 );
-        if( pBuf ){
-            lstrcpynW( pBuf, sz, (int)cchBuf );
+        HINSTANCE hinst = EEGetLocaleInstanceHandle();
+        LRESULT lResult = 0;
+        if( hinst ){
+            lResult = LoadStringW( hinst, nID, sz, _countof( sz ) ) + 1;   // LoadStringW does not work on Windows 9x, but that is OK.
+            _ASSERTE( lResult > 1 );
+            if( pBuf ){
+                lstrcpynW( pBuf, sz, (int)cchBuf );
+            }
         }
         return lResult;
     }
@@ -185,6 +222,16 @@ public:
     static LRESULT GetVersionW( LPWSTR pBuf, size_t cchBuf )
     {
         return GetStringW( pBuf, cchBuf, T::_IDS_VER );
+    }
+
+    static LRESULT GetMenuW( LPWSTR pBuf, size_t cchBuf )
+    {
+        return GetStringW( pBuf, cchBuf, T::_IDS_MENU );
+    }
+
+    static LRESULT GetStatusW( LPWSTR pBuf, size_t cchBuf )
+    {
+        return GetStringW( pBuf, cchBuf, T::_IDS_STATUS );
     }
 
     static LRESULT GetInfo( WPARAM flag )
@@ -232,6 +279,9 @@ public:
             break;
         case EP_PRE_TRANSLATE_MSG:
             lResult = pT->PreTranslateMessage( hwnd, (MSG*)lParam );
+            break;
+        case EP_USE_DROPPED_FILES:
+            lResult = pT->UseDroppedFiles( hwnd );
             break;
         }
         return lResult;
@@ -427,12 +477,174 @@ public:
             Editor_RegSetValue( m_hWnd, EEREG_EMEDITORPLUGIN, szFileName, lpszEntry, REG_SZ, (const LPBYTE)NULL, 0, 0 );
         }
     }
+
+    BOOL IsLangExist( LPCTSTR szLang )
+    {
+        if( szLang[0] != '.' ){
+            TCHAR szPath[MAX_PATH];
+            GetModuleFilePath( _T("mui"), szPath );
+            PathAppend( szPath, szLang );
+            return PathIsDirectory( szPath );
+        }
+        return FALSE;
+    }
+
+    BOOL GetResourceFolder( LPTSTR szFolder, bool bSystemLang, LPCTSTR szLang )
+    {
+        TCHAR szPath[MAX_PATH];
+        GetModuleFilePath( _T("mui"), szPath );
+        if( bSystemLang ){
+            TCHAR szFile[MAX_PATH];
+            UINT nLang = GetUserDefaultUILanguage();
+            StringCchPrintf( szFile, _countof( szFile ), _T("%u"), nLang );
+            if( IsLangExist( szFile ) ){
+                PathCombine( szFolder, szPath, szFile );
+                return TRUE;
+            }
+        }
+        if( szLang[0] ){
+            if( IsLangExist( szLang ) ){
+                PathCombine( szFolder, szPath, szLang );
+                return TRUE;
+            }
+        }
+        szFolder[0] = 0;
+        return FALSE;
+
+    }
+
+    BOOL GetAnyResourceFolder( LPTSTR szFolder )
+    {
+        // find anything available.
+        TCHAR szLang[MAX_PATH];
+        szLang[0] = 0;
+        TCHAR szPath[MAX_PATH];
+        GetModuleFilePath( _T("mui\\*"), szPath );
+        WIN32_FIND_DATA find;
+        HANDLE hFind = INVALID_HANDLE_VALUE;
+        hFind = FindFirstFile( szPath, &find );
+        if( hFind != INVALID_HANDLE_VALUE ) {
+            do {
+                if( find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ){
+                    if( IsLangExist( find.cFileName ) ){
+                        StringCchCopy( szLang, _countof( szLang ), find.cFileName );
+                        break;
+                    }
+                }
+            } while( FindNextFile(hFind, &find) );
+            FindClose(hFind);
+        }
+        if( szLang[0] ){
+            return GetResourceFolder( szFolder, false, szLang );
+        }
+        return FALSE;
+    }
+
+    BOOL GetDefaultResourceFolder( LPTSTR szFolder )
+    {
+        TCHAR szLang[MAX_PATH];
+        int nLang = GetProfileInt( EEREG_LM_COMMON, NULL, szDefaultLang, 1033 );
+        StringCchPrintf( szLang, _countof( szLang ), _T("%d"), nLang );
+        BOOL bResult = GetResourceFolder( szFolder, false, szLang );
+        if( !bResult ){
+            bResult = GetAnyResourceFolder( szFolder );
+        }
+        return bResult;
+    }
+
+    BOOL GetResourceFolder( LPTSTR szFolder )
+    {
+        TCHAR szDir[MAX_PATH];
+        szDir[0] = 0;
+        Editor_Info( m_hWnd, EI_GET_LANGUAGE, (LPARAM)szDir );
+        if( szDir[0] ){
+            PathStripPath( szDir );
+            GetModuleFilePath( _T("mui"), szFolder );
+            PathAppend( szFolder, szDir );
+            return TRUE;
+        }
+        return FALSE;
+    }
+
+    BOOL GetResourceFile( LPTSTR szPath, LPCTSTR szFile )
+    {
+        if( GetResourceFolder( szPath ) ){
+            PathAppend( szPath, szFile );
+            if( IsFileExist( szPath ) ){
+                return TRUE;
+            }
+            if( GetDefaultResourceFolder( szPath ) ){
+                PathAppend( szPath, szFile );
+                if( IsFileExist( szPath ) ){
+                    return TRUE;
+                }
+            }
+        }
+        szPath[0] = 0;
+        return FALSE;
+    }
+
+    HINSTANCE GetEmedLocInstance()
+    {
+        if( T::_USE_LOC_DLL ){
+            TCHAR szFileName[MAX_PATH];
+            TCHAR szPath[MAX_PATH];
+            szPath[0] = 0;
+            if( GetModuleFile( szFileName ) ) {
+                StringCchCat( szFileName, _countof( szFileName ), _T("_loc.dll") );
+                if( !GetResourceFile( szPath, szFileName ) ){
+                    TCHAR sz[260];
+                    StringCchCopy( sz, _countof( sz ), _T("No localized file found - ") );
+                    StringCchCat( sz, _countof( sz ), szFileName );
+                    ::MessageBox( NULL, sz, _T("EmEditor"), MB_ICONSTOP | MB_OK );
+                    return NULL;
+                }
+            }
+            else {
+                return NULL;
+            }
+            return GetInstancePath( szPath );
+        }
+        else {
+            return NULL;
+        }
+    }
 };
+
+
+extern HINSTANCE EEGetLocaleInstanceHandle();
+extern HINSTANCE EEGetInstanceHandle();
+extern BOOL IsFileExist( LPCTSTR pszPathName );
+extern BOOL GetModuleFile( LPTSTR szFileName );
+extern void GetModuleFilePath( LPCTSTR szFile, LPTSTR szPath );
+extern HINSTANCE GetInstancePath( LPCTSTR szPath );
+extern WORD EEGetCmdID();
+extern CETLFrameX* GetFrameFromFrame( HWND hwndFrame );
+extern CETLFrameX* GetFrame( HWND hwnd );
+extern CETLFrameX* GetFrameFromDlg( HWND hwnd );
+extern CETLFrameX* GetFrameFromView( HWND hwndView );
+
+#ifndef EE_EXTERN_ONLY
+HINSTANCE EEGetLocaleInstanceHandle()
+{
+    CETLLock lock;
+    {
+        if( _ETLData.m_hinstLoc != NULL ){
+            return _ETLData.m_hinstLoc;
+        }
+    }
+    return _ETLData.m_hInstance;
+}
 
 HINSTANCE EEGetInstanceHandle()
 {
     _ASSERTE( _ETLData.m_hInstance != NULL );
     return _ETLData.m_hInstance;
+}
+
+BOOL IsFileExist( LPCTSTR pszPathName )
+{
+    return( !(GetFileAttributes( pszPathName ) & FILE_ATTRIBUTE_DIRECTORY) );
 }
 
 // buffer must be MAX_PATH character long.
@@ -449,6 +661,30 @@ BOOL GetModuleFile( LPTSTR szFileName )
     if( p != NULL )  *p = _T('\0');
     lstrcpyn( szFileName, pszFile, MAX_PATH );
     return TRUE;
+}
+
+void GetModuleFilePath( LPCTSTR szFile, LPTSTR szPath )
+{
+    szPath[0] = '\0';
+    TCHAR szModulePath[MAX_PATH];
+    LPTSTR p = szPath;
+    if( ::GetModuleFileName( EEGetInstanceHandle(), szModulePath, MAX_PATH) ){
+        GetFullPathName( szModulePath, MAX_PATH, szPath, &p );
+    }
+    StringCchCopy( p, (size_t)(MAX_PATH - (p - szPath)), szFile );
+}
+
+HINSTANCE GetInstancePath( LPCTSTR szPath )
+{
+    _ASSERT( szPath[0] );
+    HINSTANCE hinstRes = ::LoadLibrary( szPath );
+    if( hinstRes == NULL ){
+        TCHAR sz[MAX_PATH + 64];
+        StringCchPrintf( sz, _countof( sz ), _T("Cannot load %s."), szPath );
+        MessageBox( NULL, sz, _T("EmEditor"), MB_OK | MB_ICONSTOP );
+        return NULL;
+    }
+    return hinstRes;
 }
 
 WORD EEGetCmdID()
@@ -481,16 +717,6 @@ CETLFrameX* GetFrame( HWND hwnd )
 {
     _ASSERTE( IsWindow( hwnd ) );
     HWND hwndFrame = GetAncestor( hwnd, GA_ROOTOWNER );
-//  for( ; ; ) {
-//      HWND hwndParent = GetParent( hwnd );
-//      if( hwndParent == NULL ){
-//          CETLFrameX* pFrame = GetFrameFromFrame( hwnd );
-//          return pFrame;
-////            hwndFrame = hwnd;
-////            break;
-//      }
-//      hwnd = hwndParent;
-//  }
     _ASSERTE( IsWindow( hwndFrame ) );
     CETLFrameX* pFrame = GetFrameFromFrame( hwndFrame );
 //  _ASSERTE( pFrame );
@@ -589,6 +815,10 @@ extern "C" void __stdcall OnEvents( HWND hwndView, UINT nEvent, LPARAM lParam )
                     CETLLock lock;
                     _ASSERTE( _ETLData.m_pETLFrameMap->find( hwndFrame ) == _ETLData.m_pETLFrameMap->end() );
                     _ETLData.m_pETLFrameMap->insert( std::pair<HWND, CETLFrameX*>( hwndFrame, pFrame ) );
+                    if( _ETLData.m_pETLFrameMap->size() == 1 ){
+                        _ASSERT( _ETLData.m_hinstLoc == NULL );
+                        _ETLData.m_hinstLoc = pFrame->GetEmedLocInstance();
+                    }
                     pFrame->OnEvents( hwndView, nEvent, lParam );
                 }
             }
@@ -601,6 +831,13 @@ extern "C" void __stdcall OnEvents( HWND hwndView, UINT nEvent, LPARAM lParam )
                     pFrame = it->second;
                     pFrame->OnEvents( hwndView, nEvent, lParam );
                     _ETLData.m_pETLFrameMap->erase( it );
+                    if( _ETLData.m_pETLFrameMap->size() == 0 ){
+//                      _ASSERT( _ETLData.m_hinstLoc != NULL );
+                        if( _ETLData.m_hinstLoc != NULL ){
+                            FreeLibrary( _ETLData.m_hinstLoc );
+                            _ETLData.m_hinstLoc = NULL;
+                        }
+                    }
                 }
                 _ETLDeleteFrame( pFrame );
             }
@@ -620,6 +857,13 @@ extern "C" void __stdcall OnEvents( HWND hwndView, UINT nEvent, LPARAM lParam )
                         return;
                     }
                     pFrame = it->second;
+                }
+                if( nEvent & EVENT_LANGUAGE ){
+                    CETLLock lock;
+                    if( _ETLData.m_hinstLoc != NULL ){
+//                      FreeLibrary( _ETLData.m_hinstLoc );
+                        _ETLData.m_hinstLoc = pFrame->GetEmedLocInstance();
+                    }
                 }
                 pFrame->OnEvents( hwndView, nEvent, lParam );
             }
@@ -653,11 +897,18 @@ extern "C" LRESULT __stdcall PlugInProc( HWND hwnd, UINT nMsg, WPARAM wParam, LP
     case EP_GET_INFO:
         lResult = CETLFrameX::GetInfo( wParam );
         break;
+    case EP_GET_MENU_TEXT:
+        lResult = CETLFrameX::GetMenuW( (LPWSTR)lParam, (size_t)wParam );
+        break;
+    case EP_GET_STATUS_MESSAGE:
+        lResult = CETLFrameX::GetStatusW( (LPWSTR)lParam, (size_t)wParam );
+        break;
     default:
         {
             // hwnd is plug-ins settings dialog handle or view window handle.
             // GetParent( hwnd ) is always Frame window handle.
-            CETLFrameX* pFrame = GetFrame( GetParent( hwnd ) );
+//          CETLFrameX* pFrame = GetFrame( GetParent( hwnd ) );
+            CETLFrameX* pFrame = GetFrame( hwnd );
             if( pFrame ){
                 lResult = pFrame->PlugInProc( hwnd, nMsg, wParam, lParam );
             }
@@ -666,3 +917,5 @@ extern "C" LRESULT __stdcall PlugInProc( HWND hwnd, UINT nMsg, WPARAM wParam, LP
     }
     return lResult;
 }
+
+#endif // EE_EXTERN_ONLY

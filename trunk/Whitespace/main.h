@@ -17,10 +17,11 @@ class EmPlugin:public CETLFrame<EmPlugin>
   public:
 
     enum {
-        _IDS_MENU   = IDS_MENU_TEXT       // Name of the command (main menu).
-    ,   _IDS_STATUS = IDS_STATUS_MESSAGE  // Description of the command (status bar).
-    ,   _IDS_NAME   = IDS_MENU_TEXT       // Name of the plug-in (settings dialog box).
-    ,   _IDS_VER    = IDS_VERSION         // Version string of the plug-in (settings dialog box).
+        _USE_LOC_DLL = 0
+    ,   _IDS_MENU    = IDS_MENU_TEXT       // Name of the command (main menu).
+    ,   _IDS_STATUS  = IDS_STATUS_MESSAGE  // Description of the command (status bar).
+    ,   _IDS_NAME    = IDS_MENU_TEXT       // Name of the plug-in (settings dialog box).
+    ,   _IDS_VER     = IDS_VERSION         // Version string of the plug-in (settings dialog box).
     };
 
     enum {
@@ -116,6 +117,9 @@ class EmPlugin:public CETLFrame<EmPlugin>
 
     // Called before each Windows message is translated.
     BOOL PreTranslateMessage(HWND hwndView,MSG* pMsg);
+
+    // Queries whether the plug-in wants to use dropped files.
+    BOOL UseDroppedFiles(HWND hwndView);
 
   private:
 

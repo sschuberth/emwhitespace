@@ -186,8 +186,6 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         );
     }
 
-    UINT const EVENT_SAVING=0x04000000;
-
     if (nEvent==EVENT_SAVING && m_final_line_end) {
         bool finalize=true;
 
@@ -287,6 +285,12 @@ BOOL EmPlugin::SetProperties(HWND hDlg)
 
 // Called before each Windows message is translated.
 BOOL EmPlugin::PreTranslateMessage(HWND hwndView,MSG* pMsg)
+{
+    return FALSE;
+}
+
+// Queries whether the plug-in wants to use dropped files.
+BOOL EmPlugin::UseDroppedFiles(HWND hwndView)
 {
     return FALSE;
 }
