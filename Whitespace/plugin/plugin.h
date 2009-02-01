@@ -117,7 +117,14 @@
 //                      EI_GET_CURRENT_FOLDER, EI_IS_LARGE_DOC flag added.
 //                      EE_GET_LINES, EE_GETLINEW, EE_GETLINEA (GET_LINE_INFO structure) supports iDoc parameter.
 //                      Editor_DocGetLines inline functions added.
+// v7.00.4 (6 Mar 2008) POS_SCROLL_ALWAYS flag added.
 //
+// v8.00 (16 Aug 2008)  EI_USE_INI, EI_GET_LANGUAGE flags added.
+//                      m_bShowIndentGuides, m_bDottedLine members added to CCustomizeInfo.
+//                      EE_GET_DROPPED_FILE message added.
+//                      EP_USE_DROPPED_FILES message to plug-ins added.
+//                      EVENT_SAVING, EVENT_DROPPED events added.
+
 #pragma once
 
 #ifdef __cplusplus
@@ -220,6 +227,9 @@
 #define CODEPAGE_UTF16LE            CODEPAGE_UNICODE
 #define CODEPAGE_UNICODE_BIGENDIAN  65538
 #define CODEPAGE_UTF16BE            CODEPAGE_UNICODE_BIGENDIAN
+#define CODEPAGE_BINARY             65539  // v8
+#define CODEPAGE_HEX                65540  // v8
+
 #define CODEPAGE_UTF8               65001
 #define CODEPAGE_UTF7               65000
 
@@ -243,7 +253,7 @@
 #define CODEPAGE_MAYBE_EUC          66305  // internal use only
 #define CODEPAGE_CONFIG             66307  // internal use only
 
-#define DEF_UNDO_BUFFER_SIZE    1000000
+#define DEF_UNDO_BUFFER_SIZE    10000
 #define MIN_UNDO_BUFFER_SIZE    10
 #define MAX_UNDO_BUFFER_SIZE    0x0aaaaaa9
 #define MAX_PLUG_IN_NAME        80
@@ -336,7 +346,8 @@
 #define EEREG_LM_COMMON             (0x7fffff11)  // HKEY_LOCAL_MACHINE\SOFTWARE\EmSoft\EmEditor v3\Common            or eeLM.ini\[Common]
 #define EEREG_LM_REGIST             (0x7fffff12)  // HKEY_LOCAL_MACHINE\SOFTWARE\EmSoft\Regist                        or eeLM.ini\[Regist]
 #define EEREG_CONFIG                (0x7fffff20)  // HKEY_CURRENT_USER\Software\EmSoft\EmEditor v3\Config\(pszConfig) or eeConfig.ini\[(pszConfig)]
-#define EEREG_EMEDITORPLUGIN        (0x7fffff30)  // HKEY_CURRENT_USER\Software\EmSoft\EmEditorPlugIns                or eePlugin.ini\[(pszConfig)]
+#define EEREG_EMEDITORPLUGIN        (0x7fffff30)  // HKEY_CURRENT_USER\Software\EmSoft\EmEditorPlugIns                or eePlugins.ini\[(pszConfig)]
+#define EEREG_EMEDITORUSERS         (0x7fffff31)  // HKEY_CURRENT_USER\Software\EmSoft\EmEditorUsers                  or eeUsers.ini\[(pszConfig)]
 #define IS_EEREG_COMMON(x)          ((DWORD)x >= EEREG_COMMON && (DWORD)x < EEREG_LM_COMMON)
 #define IS_EEREG_LM(x)              ((DWORD)x >= EEREG_LM_COMMON && (DWORD)x < EEREG_CONFIG)
 #define EE_REG_VARIABLE_SIZE        1
@@ -371,6 +382,10 @@
 #define EVENT_TOOLBAR_CLOSED    0x01000000
 #define EVENT_TOOLBAR_SHOW      0x02000000
 
+// new events for v8
+#define EVENT_SAVING            0x04000000
+#define EVENT_DROPPED           0x08000000
+#define EVENT_LANGUAGE          0x10000000
 
 typedef void *HEEDOC;
 
@@ -396,6 +411,7 @@ typedef struct _LOAD_FILE_INFO_EX {
 } LOAD_FILE_INFO_EX;
 
 #define LFI_ALLOW_NEW_WINDOW    1
+#define LFI_ALLOW_ASYNC_OPEN    2
 
 typedef struct _GET_LINE_INFO {
     UINT_PTR cch;
@@ -496,6 +512,7 @@ typedef struct tagSIZE_PTR
 #define HISTORY_COMBINED            0x00020000L
 #define HISTORY_CR_ONLY             0x00040000L
 #define HISTORY_LF_ONLY             0x00080000L
+#define HISTORY_SEL_BOX             0x00100000L
 
 typedef struct _HISTORY_INFO {
     size_t  cbSize;
@@ -560,6 +577,15 @@ typedef struct _REG_QUERY_VALUE_INFO {
     DWORD   dwFlags;
 } REG_QUERY_VALUE_INFO;
 
+
+typedef struct _PROCESS_INFO {
+    size_t  cbSize;
+    LPCWSTR pszAppName;
+    LPCWSTR pszCmdLine;
+    LPCWSTR pszDir;
+    UINT    nFlags;
+    UINT    nCP;
+} PROCESS_INFO;
 
 #define EE_FIRST                (WM_USER+0x400)
 #define EE_GET_CMD_ID           (EE_FIRST+0)
@@ -1842,9 +1868,9 @@ inline LONG Editor_RegQueryValue( HWND hwnd, DWORD dwKey, LPCWSTR pszConfig, LPC
   // (UINT)wParam = nCmdID, (LPWSTR)lParam = psz  (buffer must be MAX_PATH)
   // returns (BOOL)bValidCmd
 
-inline BOOL Editor_QueryString( HWND hwnd, UINT nCmdID, LPWSTR psz )
+inline BOOL Editor_QueryString( HWND hwnd, UINT nCmdID, LPWSTR psz, BOOL bShortTitle = FALSE )
 {
-    return (BOOL)SNDMSG( hwnd, EE_QUERY_STRING, (WPARAM)nCmdID, (LPARAM)psz );
+    return (BOOL)SNDMSG( hwnd, EE_QUERY_STRING, (WPARAM)MAKEWPARAM( nCmdID, bShortTitle ), (LPARAM)psz );
 }
 
 #define EE_KEYBOARD_PROP                (EE_FIRST+88)
@@ -1891,6 +1917,31 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
     return (size_t)SNDMSG( (hwnd), EE_ENUM_HIGHLIGHT, (WPARAM)cchBuf, (LPARAM)pBuf );
 }
 
+#define EE_OUTPUT_PROCESS               (EE_FIRST+93)
+  // wParam = 0
+  // (PROCESS_INFO*)lParam = pProcessInfo
+
+inline BOOL Editor_OutputProcess( HWND hwnd, LPCWSTR pszAppName, LPCWSTR pszCmdLine, LPCWSTR pszDir, UINT nFlags, UINT nCP )
+{
+    PROCESS_INFO pi = { 0 };
+    pi.cbSize = sizeof( pi );
+    pi.pszAppName = pszAppName;
+    pi.pszCmdLine = pszCmdLine;
+    pi.pszDir = pszDir;
+    pi.nFlags = nFlags;
+    pi.nCP = nCP;
+    return (BOOL)SNDMSG( hwnd, EE_OUTPUT_PROCESS, (WPARAM)0, (LPARAM)&pi );
+}
+
+#define EE_GET_DROPPED_FILE             (EE_FIRST+94)
+  // (int)wParam = nIndex
+  // (LPWSTR)lParam = pszBuf
+
+inline UINT Editor_GetDroppedFile( HWND hwnd, int nIndex, LPWSTR pszBuf )
+{
+    return (UINT)SNDMSG( hwnd, EE_GET_DROPPED_FILE, (WPARAM)nIndex, (LPARAM)pszBuf );
+}
+
 //
 #define EE_LAST                 (EE_FIRST+255)
 
@@ -1906,6 +1957,7 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
 #define FLAG_CLOSE_OUTPUT       2
 #define FLAG_FOCUS_OUTPUT       4
 #define FLAG_CLEAR_OUTPUT       8
+#define FLAG_INCLUDE_STDERR     0x010
 
 #define EI_GET_ENCODE           256
 #define EI_SET_ENCODE           257
@@ -1952,6 +2004,11 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
 #define EI_GET_CURRENT_FOLDER   317
 #define EI_IS_LARGE_DOC         318
 
+// new from v8.00
+#define EI_USE_INI              319
+#define EI_GET_LANGUAGE         320
+
+
 #define POS_VIEW                    0
 #define POS_LOGICAL_A               1
 #define POS_LOGICAL_W               2
@@ -1961,6 +2018,7 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
 #define POS_SCROLL_DONT_CARE        0x00000000
 #define POS_SCROLL_CENTER           0x00000010
 #define POS_SCROLL_TOP              0x00000020
+#define POS_SCROLL_ALWAYS           0x00000040
 #define POS_WANT_X                  0x00010000
 #define POS_WANT_Y                  0x00020000
 
@@ -1993,24 +2051,26 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
 #define FLAG_CONVERT_ALL_TYPES      0xfe00
 
 // EE_FIND, EE_REPLACE, EE_FIND_IN_FILES, EE_REPLACE_IN_FILES, EE_MATCH_REGEX, EE_FIND_REGEX
-#define FLAG_FIND_NEXT              0x0001  // EE_FIND only
-#define FLAG_FIND_CASE              0x0002  // EE_FIND, EE_REPLACE, EE_MATCH_REGEX and EE_FIND_REGEX
-#define FLAG_FIND_ESCAPE            0x0004  // EE_FIND and EE_REPLACE
-#define FLAG_REPLACE_SEL_ONLY       0x0008  // EE_REPLACE only
-#define FLAG_REPLACE_ALL            0x0010  // EE_REPLACE only
-#define FLAG_FIND_NO_PROMPT         0x0020  // EE_FIND and EE_REPLACE
-#define FLAG_FIND_ONLY_WORD         0x0040  // EE_FIND, EE_REPLACE and EE_FIND_REGEX
-#define FLAG_FIND_AROUND            0x0080  // EE_FIND only
-#define FLAG_FIND_REG_EXP           0x0100  // EE_FIND and EE_REPLACE
-#define FLAG_FIND_CLOSE             0x0200  // EE_FIND and EE_REPLACE
-#define FLAG_FIND_RECURSIVE         0x0400  // EE_FIND_IN_FILES and EE_REPLACE_IN_FILES
-#define FLAG_FIND_FILENAMES_ONLY    0x0800  // EE_FIND_IN_FILES only
-#define FLAG_REPLACE_KEEP_OPEN      0x1000  // EE_REPLACE_IN_FILES only
-#define FLAG_REPLACE_BACKUP         0x2000  // EE_REPLACE_IN_FILES only
-#define FLAG_FIND_IGNORE_FILES      0x4000  // EE_FIND_IN_FILES and EE_REPLACE_IN_FILES
-#define FLAG_FIND_OPEN_DOC          0x8000  // EE_FIND only  v6.00
-#define FLAG_GREP_MASK              0x7c00
-#define FLAG_FIND_MASK              0xffff
+#define FLAG_FIND_NEXT              0x00000001  // EE_FIND only
+#define FLAG_FIND_CASE              0x00000002  // EE_FIND, EE_REPLACE, EE_MATCH_REGEX and EE_FIND_REGEX
+#define FLAG_FIND_ESCAPE            0x00000004  // EE_FIND and EE_REPLACE
+#define FLAG_REPLACE_SEL_ONLY       0x00000008  // EE_REPLACE only
+#define FLAG_REPLACE_ALL            0x00000010  // EE_REPLACE only
+#define FLAG_FIND_NO_PROMPT         0x00000020  // EE_FIND and EE_REPLACE
+#define FLAG_FIND_ONLY_WORD         0x00000040  // EE_FIND, EE_REPLACE and EE_FIND_REGEX
+#define FLAG_FIND_AROUND            0x00000080  // EE_FIND only
+#define FLAG_FIND_REG_EXP           0x00000100  // EE_FIND and EE_REPLACE
+#define FLAG_FIND_CLOSE             0x00000200  // EE_FIND and EE_REPLACE
+#define FLAG_FIND_RECURSIVE         0x00000400  // EE_FIND_IN_FILES and EE_REPLACE_IN_FILES
+#define FLAG_FIND_FILENAMES_ONLY    0x00000800  // EE_FIND_IN_FILES only
+#define FLAG_REPLACE_KEEP_OPEN      0x00001000  // EE_REPLACE_IN_FILES only
+#define FLAG_REPLACE_BACKUP         0x00002000  // EE_REPLACE_IN_FILES only
+#define FLAG_FIND_IGNORE_FILES      0x00004000  // EE_FIND_IN_FILES and EE_REPLACE_IN_FILES
+#define FLAG_FIND_OPEN_DOC          0x00008000  // EE_FIND and EE_REPLACE
+#define FLAG_FIND_MATCH_DOT_NL      0x00010000  // internal use only
+#define FLAG_FIND_OUTPUT            0x01000000  // EE_FIND_IN_FILES only
+#define FLAG_GREP_MASK              0x01007c00
+#define FLAG_FIND_MASK              0x0100ffff
 
 // GET_LINE_INFO
 #define FLAG_LOGICAL    1
@@ -2034,6 +2094,9 @@ inline size_t Editor_EnumHighlight( HWND hwnd, LPWSTR pBuf, size_t cchBuf )
 #define EP_GET_MASK             (EP_FIRST+9)
 #define EP_GET_INFO             (EP_FIRST+10)
 #define EP_PRE_TRANSLATE_MSG    (EP_FIRST+11)
+#define EP_USE_DROPPED_FILES    (EP_FIRST+12)
+#define EP_GET_MENU_TEXT        (EP_FIRST+13)
+#define EP_GET_STATUS_MESSAGE   (EP_FIRST+14)
 
 #define EP_LAST                 (EP_FIRST+50)
 
@@ -2133,8 +2196,8 @@ public:
     BYTE        m_byteMonitorInterval;  // 5.00: monitor interval for changed file (File tab)
     bool        m_bVirtualSpace;    // 7.00 : Enable Virtual Space  // m_bReserved1;
     BYTE        m_byteSmoothScrollSpeed;    // 7.00 : Smooth Scroll Speed  MIN_SMOOTH_SCROLL_SPEED (slow) - MAX_SMOOTH_SCROLL_SPEED (fast)
-    bool        m_bReserved3;        // m_bRightAllBeyond;      // 7.00 : Right All Beyond
-    bool        m_bReserved2;
+    bool        m_bShowIndentGuides;        // 8.00 : Show Indent Guides
+    bool        m_bDottedLine;       // 8.00 : Dotted Focused Lines
     bool        m_bReserved1;
     int         m_nReserved5;       // reserved
     int         m_nReserved4;       // reserved
@@ -2555,6 +2618,20 @@ public:
 #define EEID_USER_MENU7                   4435
 #define EEID_USER_MENU8                   4436
 #define EEID_SELECT_LOGICAL_LINE          4437
+#define EEID_FILE_RELOAD_BINARY           4438
+#define EEID_FILE_RELOAD_HEX              4439
+#define EEID_FILE_SAVE_BINARY             4440
+#define EEID_FILE_SAVE_HEX                4441
+#define EEID_JUMP_NEXT                    4442
+#define EEID_JUMP_PREV                    4443
+#define EEID_EDIT_CUT_SEL                 4444
+#define EEID_EDIT_COPY_SEL                4445
+#define EEID_RETRIEVE_REPLACE_TEXT        4446
+#define EEID_REPLACE_NEXT                 4447
+#define EEID_VIEW_FUNCTION_BAR            4448
+#define EEID_LARGE_FILE_BAR               4449
+#define EEID_ERASE_WORKSPACE              4450
+#define EEID_TERMINATE_TOOL               4451
 
 #define EEID_FILE_MRU_FILE1               4609  // to EEID_FILE_MRU_FILE1 + 63
 #define EEID_MRU_FONT1                    4736  // to EEID_MRU_FONT1 + 63
@@ -2587,6 +2664,22 @@ public:
 #define EEID_CHARSET_WESTERN_EUROPE       8718
 #define EEID_CHARSET_OEM                  8719
 
+#define EEID_OUTLINE_LEVEL_2              8832
+#define EEID_OUTLINE_LEVEL_3              8833
+#define EEID_OUTLINE_LEVEL_4              8834
+#define EEID_OUTLINE_LEVEL_5              8835
+#define EEID_OUTLINE_LEVEL_6              8836
+#define EEID_OUTLINE_LEVEL_7              8837
+#define EEID_OUTLINE_LEVEL_8              8838
+#define EEID_OUTLINE_LEVEL_9              8839
+#define EEID_OUTLINE_LEVEL_10             8840
+#define EEID_OUTLINE_LEVEL_11             8841
+#define EEID_OUTLINE_LEVEL_12             8842
+#define EEID_OUTLINE_LEVEL_13             8843
+#define EEID_OUTLINE_LEVEL_14             8844
+#define EEID_OUTLINE_LEVEL_15             8845
+#define EEID_OUTLINE_LEVEL_16             8846
+
 #define EEID_PROPERTY_MARGIN              8960
 #define EEID_PROPERTY_SCROLL              8961
 #define EEID_PROPERTY_FILE                8962
@@ -2610,3 +2703,7 @@ public:
 #define EEID_CUSTOMIZE_TAB                9044
 #define EEID_CUSTOMIZE_STATUS             9045
 #define EEID_CUSTOMIZE_ADVANCED           9046
+#define EEID_CUSTOMIZE_LANG               9047
+#define EEID_CUSTOMIZE_SHORTCUT           9048
+#define EEID_CUSTOMIZE_EDIT               9049
+#define EEID_CUSTOMIZE_MARKS              9050
