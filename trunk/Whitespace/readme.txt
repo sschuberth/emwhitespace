@@ -5,7 +5,7 @@ This plug-in offers a more complete alternative to the "ShowReturns" and "Trim
 Right" plug-ins. When its icon is selected from the plug-in toolbar, a pop-up
 menu is displayed offering the following commands:
 
-    "Toggle current display"
+    "Show whitespaces"
     This toggles between the currently selected display options and displaying
     no whitespaces at all.
 
@@ -44,3 +44,4 @@ The "pilcrow" icon was taken from the Silk Icon Set 1.3 freely available at
 http://www.famfamfam.com/lab/icons/silk/
 
 Sebastian Schuberth <sschuberth@gmail.com>
+
