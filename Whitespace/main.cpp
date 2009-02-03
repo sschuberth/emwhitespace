@@ -40,7 +40,7 @@ void EmPlugin::OnCommand(HWND hwndView)
         return;
     }
 
-    CheckMenuItem(m_menu_handle,MI_TOGGLE_WHITESPACES,m_show_whitespaces?MF_CHECKED:MF_UNCHECKED);
+    CheckMenuItem(m_menu_handle,MI_SHOW_WHITESPACES,m_show_whitespaces?MF_CHECKED:MF_UNCHECKED);
 
     CheckMenuItem(m_menu_handle,MI_SHOW_LINE_ENDS,config_info.m_bShowCR?MF_CHECKED:MF_UNCHECKED);
     CheckMenuItem(m_menu_handle,MI_SHOW_EOF,config_info.m_bShowEOF?MF_CHECKED:MF_UNCHECKED);
@@ -52,7 +52,7 @@ void EmPlugin::OnCommand(HWND hwndView)
     // Display the pop-up menu and wait for a choice.
     UINT item=(UINT)TrackPopupMenuEx(m_menu_handle,TPM_LEFTALIGN|TPM_TOPALIGN|TPM_RETURNCMD,mouse_pos.x,mouse_pos.y,hwndView,NULL);
     switch (item) {
-        case MI_TOGGLE_WHITESPACES: {
+        case MI_SHOW_WHITESPACES: {
             // Toggle the setting and immediately store it.
             m_show_whitespaces=!m_show_whitespaces;
             LONG result=Editor_RegSetValue(
@@ -147,7 +147,7 @@ void EmPlugin::OnEvents(HWND hwndView,UINT nEvent,LPARAM lParam)
         // Create a pop-up menu with the desired entries.
         m_menu_handle=CreatePopupMenu();
 
-        AppendMenu(m_menu_handle,MF_STRING,MI_TOGGLE_WHITESPACES,_T("Toggle current display"));
+        AppendMenu(m_menu_handle,MF_STRING,MI_SHOW_WHITESPACES,_T("Show Whitespaces"));
 
         // Separate the global toggle from the specific toggles.
         AppendMenu(m_menu_handle,MF_SEPARATOR,0,NULL);

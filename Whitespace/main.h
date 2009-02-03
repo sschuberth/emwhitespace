@@ -17,7 +17,7 @@ class EmPlugin:public CETLFrame<EmPlugin>
   public:
 
     enum {
-        _USE_LOC_DLL = 0
+        _USE_LOC_DLL = 0                   // Indicate whether there are locale DLLs available in the Plug-ins' MUI folder.
     ,   _IDS_MENU    = IDS_MENU_TEXT       // Name of the command (main menu).
     ,   _IDS_STATUS  = IDS_STATUS_MESSAGE  // Description of the command (status bar).
     ,   _IDS_NAME    = IDS_MENU_TEXT       // Name of the plug-in (settings dialog box).
@@ -68,7 +68,7 @@ class EmPlugin:public CETLFrame<EmPlugin>
     };
 
     enum MenuItem {
-        MI_TOGGLE_WHITESPACES = 1
+        MI_SHOW_WHITESPACES = 1
 
     ,   MI_SHOW_LINE_ENDS
     ,   MI_SHOW_EOF
