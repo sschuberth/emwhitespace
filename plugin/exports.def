@@ -1,0 +1,9 @@
+EXPORTS
+
+OnCommand           @1  ; OnCommand( HWND hwnd )
+QueryStatus         @2  ; QueryStatus( HWND hwnd, LPBOOL pbChecked )
+OnEvents            @3  ; OnEvents( HWND hwnd, UINT nEvent, LPARAM lParam )
+GetMenuTextID       @4  ; GetMenuTextID()
+GetStatusMessageID  @5  ; GetStatusMessageID()
+GetBitmapID         @6  ; GetBitmapID()
+PlugInProc          @7  ; PlugInProc( HWND hwnd, UINT nMsg, WPARAM wParam, LPARAM lParam )
