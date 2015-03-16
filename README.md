@@ -47,5 +47,7 @@ All the conversion commands work on the current selection, or the whole document
 if there is no selection. In this they differ from the built-in commands
 available from the "Edit" main menu.
 
+# Credits
+
 The "pilcrow" icon was taken from the Silk Icon Set 1.3 freely available at
 http://www.famfamfam.com/lab/icons/silk/
